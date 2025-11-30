@@ -6,13 +6,49 @@ export default defineSchema({
     wallet: v.string(),
     role: v.string(), // "household" | "farmer" | "both"
     createdAt: v.number(),
+    prefs: v.optional(v.any()),
   }).index("by_wallet", ["wallet"]),
   pantry_items: defineTable({
     userId: v.id("users"),
     name: v.string(),
     quantity: v.number(),
     unit: v.string(),
+    avgDailyUse: v.optional(v.number()),
     lastUpdated: v.number(),
+  }).index("by_user", ["userId"]),
+  household_settings: defineTable({
+    userId: v.id("users"),
+    weeklyBudget: v.number(),
+    perOrderCap: v.number(),
+    approvalMode: v.union(v.literal("ask"), v.literal("auto")),
+    vendors: v.record(v.string(), v.boolean()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+  cart_events: defineTable({
+    userId: v.id("users"),
+    decision: v.union(v.literal("approved"), v.literal("declined")),
+    items: v.array(
+      v.object({
+        name: v.string(),
+        suggestedQty: v.number(),
+        unit: v.string(),
+        reason: v.string(),
+        estimatedCost: v.number(),
+      })
+    ),
+    total: v.number(),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
+  farmer_simulations: defineTable({
+    userId: v.id("users"),
+    crop: v.string(),
+    region: v.string(),
+    fieldSizeHa: v.number(),
+    variety: v.string(),
+    expectedYieldTPerHa: v.number(),
+    traitScore: v.number(),
+    notes: v.optional(v.string()),
+    requestedAt: v.number(),
   }).index("by_user", ["userId"]),
   audit_logs: defineTable({
     userId: v.id("users"),

@@ -8,7 +8,7 @@ import { v } from "convex/values";
 type MutationCtx = GenericMutationCtx<GenericDataModel>;
 
 const RESET_TOKEN = process.env.CONVEX_RESET_TOKEN;
-const TABLES = ["users", "pantry_items", "audit_logs"] as const;
+const TABLES = ["users", "pantry_items", "audit_logs", "household_settings", "cart_events", "farmer_simulations"] as const;
 
 export const truncateAll = mutationGeneric({
   args: {

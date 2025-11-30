@@ -36,7 +36,7 @@ export default function MidnightPage() {
         metrics,
       });
       setProof(result);
-      setStatus("Proof submitted to Midnight testnet (or mock if prover unavailable).");
+      setStatus("Proof submitted to Midnight prover.");
     } catch (err) {
       setError((err as Error).message);
       setStatus(undefined);

@@ -24,6 +24,7 @@ export const upsertPantryItem = mutationGeneric({
     name: v.string(),
     quantity: v.number(),
     unit: v.string(),
+    avgDailyUse: v.number(),
   },
   handler: async (ctx: MutationCtx, args) => {
     const existing = (await ctx.db
@@ -43,6 +44,7 @@ export const upsertPantryItem = mutationGeneric({
       await ctx.db.patch(match._id, {
         quantity: args.quantity,
         unit: args.unit,
+        avgDailyUse: args.avgDailyUse,
         lastUpdated: now,
       });
       return match._id;
@@ -53,6 +55,7 @@ export const upsertPantryItem = mutationGeneric({
       name: args.name,
       quantity: args.quantity,
       unit: args.unit,
+      avgDailyUse: args.avgDailyUse,
       lastUpdated: now,
     });
   },

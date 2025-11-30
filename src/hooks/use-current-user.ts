@@ -6,12 +6,20 @@ import { useQuery } from "convex/react";
 import { useAccount } from "wagmi";
 import { convexClient } from "@/lib/convex/client";
 
+export type UserPrefs = {
+  network: "testnet" | "mainnet";
+  txWarnings: boolean;
+  allowDenyLists: boolean;
+  telemetry: boolean;
+  maxSpend: number;
+};
+
 export type UserProfile = {
   _id: Id<"users">;
   wallet: string;
   role: string;
   createdAt: number;
-  prefs?: unknown;
+  prefs?: UserPrefs;
 };
 
 const convexAvailable = Boolean(convexClient);

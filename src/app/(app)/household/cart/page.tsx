@@ -3,30 +3,86 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CartSuggestion, PantryItem, buildCartSuggestions } from "@/features/household/services/cart";
-import { useMemo, useState } from "react";
-
-const pantry: PantryItem[] = [
-  { name: "Milk", quantity: 2, unit: "L", avgDailyUse: 0.6 },
-  { name: "Eggs", quantity: 10, unit: "pcs", avgDailyUse: 2 },
-  { name: "Rice", quantity: 1.2, unit: "kg", avgDailyUse: 0.15 },
-];
+import { CartSuggestion, summarizeCart } from "@/features/household/services/cart";
+import { api } from "../../../../../convex/_generated/api";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useMutation, useQuery } from "convex/react";
+import { useState } from "react";
 
 export default function CartPage() {
-  const suggestions = useMemo(() => buildCartSuggestions(pantry), []);
-  const [log, setLog] = useState<string[]>([]);
+  const { user, isConnected, convexConfigured, isLoadingUser } = useCurrentUser();
+  const cartData = useQuery(
+    api.functions.household.getCartSuggestions,
+    user ? { userId: user._id } : "skip"
+  );
+  const events = useQuery(api.functions.household.listCartEvents, user ? { userId: user._id } : "skip");
+  const recordDecision = useMutation(api.functions.household.recordCartDecision);
+  const [status, setStatus] = useState<string>();
+  const [error, setError] = useState<string>();
 
-  const handleApprove = (cart: CartSuggestion[]) => {
-    const total = cart.reduce((sum, item) => sum + item.estimatedCost, 0);
-    setLog((prev) => [
-      `Approved cart ($${total.toFixed(2)}): ${cart.map((c) => `${c.name} x${c.suggestedQty}`).join(", ")}`,
-      ...prev,
-    ]);
+  const approve = async (cart: CartSuggestion[]) => {
+    if (!user) {
+      setError("Connect your wallet and finish onboarding to approve carts.");
+      return;
+    }
+    setStatus("Submitting approval...");
+    setError(undefined);
+    try {
+      await recordDecision({ userId: user._id, decision: "approved", cart });
+      setStatus("Approved");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setTimeout(() => setStatus(undefined), 1400);
+    }
   };
 
-  const handleDecline = () => {
-    setLog((prev) => [`Declined suggested cart at ${new Date().toLocaleTimeString()}`, ...prev]);
+  const decline = async () => {
+    if (!user) {
+      setError("Connect your wallet and finish onboarding to decline carts.");
+      return;
+    }
+    setStatus("Declining...");
+    setError(undefined);
+    try {
+      await recordDecision({ userId: user._id, decision: "declined", cart: cartData?.suggestions ?? [] });
+      setStatus("Declined");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setTimeout(() => setStatus(undefined), 1400);
+    }
   };
+
+  if (!convexConfigured) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 pb-16 pt-12 md:px-10">
+        <div className="space-y-2">
+          <Badge className="w-fit">Household</Badge>
+          <h1 className="text-3xl font-semibold md:text-4xl">Auto-cart</h1>
+          <p className="text-muted-foreground">
+            Configure <code>NEXT_PUBLIC_CONVEX_URL</code> to generate carts from your pantry and guardrails.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!isConnected || !user) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 pb-16 pt-12 md:px-10">
+        <div className="space-y-2">
+          <Badge className="w-fit">Household</Badge>
+          <h1 className="text-3xl font-semibold md:text-4xl">Auto-cart</h1>
+          <p className="text-muted-foreground">Connect your wallet to see suggestions and approve carts.</p>
+        </div>
+      </main>
+    );
+  }
+
+  const loading = cartData === undefined || isLoadingUser;
+  const suggestions = cartData?.suggestions ?? [];
+  const summary = summarizeCart(suggestions);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pb-16 pt-12 md:px-10">
@@ -41,49 +97,105 @@ export default function CartPage() {
       <Card>
         <CardHeader>
           <CardTitle>Recommended cart</CardTitle>
-          <CardDescription>Based on run-out risk for the next 7 days.</CardDescription>
+          <CardDescription>
+            Based on run-out risk for the next 7 days and your approval rules.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-4 gap-3 text-sm font-medium text-muted-foreground">
-            <span>Item</span>
-            <span>Qty</span>
-            <span>Reason</span>
-            <span>Est. cost</span>
-          </div>
-          {suggestions.map((s) => (
-            <div
-              key={s.name}
-              className="grid grid-cols-4 items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2 text-sm"
-            >
-              <span className="font-medium">{s.name}</span>
-              <span>
-                {s.suggestedQty} {s.unit}
-              </span>
-              <span className="text-muted-foreground">{s.reason}</span>
-              <span>${s.estimatedCost.toFixed(2)}</span>
-            </div>
-          ))}
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={() => handleApprove(suggestions)}>Approve &amp; create sandbox cart</Button>
-            <Button variant="outline" onClick={handleDecline}>
-              Decline &amp; recompute
-            </Button>
-          </div>
+          {loading && <p className="text-sm text-muted-foreground">Loading suggestions…</p>}
+          {!loading && suggestions.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No suggestions yet. Add pantry items and set guardrails to generate a cart.
+            </p>
+          )}
+          {!loading && suggestions.length > 0 && (
+            <>
+              <div className="grid grid-cols-4 gap-3 text-sm font-medium text-muted-foreground">
+                <span>Item</span>
+                <span>Qty</span>
+                <span>Reason</span>
+                <span>Est. cost</span>
+              </div>
+              {suggestions.map((s) => (
+                <div
+                  key={s.name}
+                  className="grid grid-cols-4 items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2 text-sm"
+                >
+                  <span className="font-medium">{s.name}</span>
+                  <span>
+                    {s.suggestedQty} {s.unit}
+                  </span>
+                  <span className="text-muted-foreground">{s.reason}</span>
+                  <span>${s.estimatedCost.toFixed(2)}</span>
+                </div>
+              ))}
+              <div className="grid grid-cols-3 gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
+                <div>
+                  <p className="font-medium">Vendor</p>
+                  <p className="text-muted-foreground">{cartData?.vendor ?? "None allowed"}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Est. total</p>
+                  <p className="text-muted-foreground">${summary.total.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Approval mode</p>
+                  <p className="text-muted-foreground">
+                    {cartData?.approvalMode === "auto"
+                      ? `Auto-approve under $${cartData.perOrderCap.toFixed(2)}`
+                      : "Always ask"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => approve(suggestions)} disabled={!!status || suggestions.length === 0}>
+                  {status ?? "Approve & create sandbox cart"}
+                </Button>
+                <Button variant="outline" onClick={decline} disabled={!!status}>
+                  Decline &amp; recompute
+                </Button>
+              </div>
+            </>
+          )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Audit log (local)</CardTitle>
-          <CardDescription>Decisions are logged with timestamps for review.</CardDescription>
+          <CardTitle>Audit log</CardTitle>
+          <CardDescription>Decisions recorded against your wallet.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          {log.length === 0 && <p className="text-muted-foreground">No decisions yet.</p>}
-          {log.map((entry, idx) => (
-            <div key={idx} className="rounded border bg-muted/40 px-3 py-2">
-              {entry}
-            </div>
-          ))}
+          {events === undefined && <p className="text-muted-foreground">Loading history…</p>}
+          {events && events.length === 0 && (
+            <p className="text-muted-foreground">No decisions yet. Approve or decline a cart to record activity.</p>
+          )}
+          {events &&
+            events.map((entry) => {
+              const decision = typeof entry.decision === "string" ? entry.decision : "unknown";
+              const createdAt =
+                typeof entry.createdAt === "number" ? entry.createdAt : Date.now();
+              const total = typeof entry.total === "number" ? entry.total : 0;
+              const items = Array.isArray(entry.items) ? entry.items : [];
+              const key =
+                entry._id && typeof entry._id.toString === "function"
+                  ? entry._id.toString()
+                  : `${decision}-${createdAt}`;
+              return (
+                <div key={key} className="rounded border bg-muted/40 px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium capitalize">{decision}</span>
+                    <span className="text-muted-foreground">
+                      {new Date(createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground">
+                    {items.length} items — ${total.toFixed(2)}
+                  </p>
+                </div>
+              );
+            })}
         </CardContent>
       </Card>
     </main>
