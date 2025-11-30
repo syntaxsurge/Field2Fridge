@@ -1,22 +1,28 @@
 #!/usr/bin/env node
-/**
- * scripts/convex-dev.cjs
- *
- * Wrapper for `npx convex dev` so the root project can run
- * `pnpm run convex:dev` and share environment configuration.
- */
+const { spawn } = require("child_process");
+const path = require("path");
 
-const { spawn } = require("node:child_process");
+const stubPath = path.resolve(__dirname, "disable-sentry.cjs");
+const convexPackageJson = require.resolve("convex/package.json");
+const cliEntrypoint = path.resolve(convexPackageJson, "../bin/main.js");
+const extraArgs = process.argv.slice(2);
 
-const child = spawn("npx", ["convex", "dev"], {
-  stdio: "inherit",
-  env: process.env,
-});
+const child = spawn(
+  process.execPath,
+  ["--require", stubPath, cliEntrypoint, "dev", ...extraArgs],
+  {
+    stdio: "inherit",
+    env: process.env,
+  },
+);
 
 child.on("exit", (code, signal) => {
+  if (typeof code === "number") {
+    process.exit(code);
+  }
   if (signal) {
     process.kill(process.pid, signal);
   } else {
-    process.exit(code ?? 0);
+    process.exit(0);
   }
 });
