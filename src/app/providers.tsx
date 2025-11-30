@@ -7,59 +7,40 @@ import { ReactNode, useEffect, useState } from "react";
 import { RainbowKitProvider, darkTheme, lightTheme } from "@rainbow-me/rainbowkit";
 import { ConvexProvider } from "convex/react";
 import { convexClient } from "@/lib/convex/client";
-import { WagmiProvider, type Config as WagmiConfig, createConfig, http } from "wagmi";
-import type { Chain } from "wagmi/chains";
-import { bsc, bscTestnet } from "wagmi/chains";
+import { ThemeProvider } from "next-themes";
+import { WagmiProvider, type State } from "wagmi";
+import { defaultChain, wagmiConfig } from "@/lib/wallet/config";
 
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({
+  children,
+  initialState,
+}: {
+  children: ReactNode;
+  initialState?: State;
+}) {
   const [queryClient] = useState(() => new QueryClient());
-  const [wagmiConfig, setWagmiConfig] = useState<WagmiConfig>();
-  const [defaultChain, setDefaultChain] = useState<Chain>();
+  const [mounted, setMounted] = useState(false);
 
-  const fallbackConfig = createConfig({
-    chains: [bscTestnet, bsc],
-    connectors: [],
-    transports: {
-      [bscTestnet.id]: http("https://data-seed-prebsc-1-s1.bnbchain.org:8545"),
-      [bsc.id]: http("https://bsc-dataseed1.binance.org"),
-    },
-    ssr: true,
-  });
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const mod = await import("@/lib/wallet/config");
-      if (mounted) {
-        setWagmiConfig(mod.wagmiConfig);
-        setDefaultChain(mod.defaultChain);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const resolvedConfig = wagmiConfig ?? fallbackConfig;
-  const resolvedChain = defaultChain ?? bscTestnet;
+  useEffect(() => setMounted(true), []);
 
   return (
-    <WagmiProvider config={resolvedConfig}>
+    <WagmiProvider config={wagmiConfig} initialState={initialState}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider
-          modalSize="compact"
-          initialChain={resolvedChain}
-          theme={{
-            lightMode: lightTheme({ borderRadius: "large", overlayBlur: "small" }),
-            darkMode: darkTheme({ borderRadius: "large", overlayBlur: "small" }),
-          }}
-        >
-          {convexClient ? (
-            <ConvexProvider client={convexClient}>{children}</ConvexProvider>
-          ) : (
-            children
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          {mounted && (
+            <RainbowKitProvider
+              modalSize="compact"
+              initialChain={defaultChain}
+              theme={{
+                lightMode: lightTheme({ borderRadius: "large", overlayBlur: "small" }),
+                darkMode: darkTheme({ borderRadius: "large", overlayBlur: "small" }),
+              }}
+            >
+              {convexClient ? <ConvexProvider client={convexClient}>{children}</ConvexProvider> : children}
+            </RainbowKitProvider>
           )}
-        </RainbowKitProvider>
+          {!mounted && children}
+        </ThemeProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
