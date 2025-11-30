@@ -1,3 +1,5 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   Activity,
   CreditCard,
@@ -17,8 +20,59 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 export default function DashboardPage() {
+  const { user, isConnected, isLoadingUser, convexConfigured, address } = useCurrentUser();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const urlRole = searchParams.get("role");
+  const [activeTab, setActiveTab] = useState<"household" | "farmer">(
+    urlRole === "farmer" ? "farmer" : "household"
+  );
+
+  useEffect(() => {
+    if (!isConnected) {
+      router.replace("/sign-in");
+    } else if (convexConfigured && !isLoadingUser && !user) {
+      router.replace("/sign-in");
+    }
+  }, [convexConfigured, isConnected, isLoadingUser, router, user]);
+
+  useEffect(() => {
+    if (user?.role === "household" || user?.role === "farmer") {
+      setActiveTab(user.role as "household" | "farmer");
+    }
+  }, [user]);
+
+  const statusCopy = useMemo(() => {
+    if (!isConnected) return "Connect your wallet to view your agents.";
+    if (convexConfigured && isLoadingUser) return "Loading your Field2Fridge profile…";
+    if (convexConfigured && !user) return "No profile found. Finish onboarding first.";
+    return null;
+  }, [convexConfigured, isConnected, isLoadingUser, user]);
+
+  if (statusCopy) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 pb-16 pt-20 md:px-10">
+        <header className="space-y-3">
+          <Badge className="w-fit">Control center</Badge>
+          <h1 className="text-3xl font-semibold md:text-4xl">Ops snapshot for your agents</h1>
+          <p className="text-muted-foreground">{statusCopy}</p>
+          <div className="flex gap-3">
+            <Button asChild>
+              <Link href="/sign-in">Go to onboarding</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/">Back home</Link>
+            </Button>
+          </div>
+        </header>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-10 px-6 pb-16 pt-12 md:px-10">
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -31,18 +85,21 @@ export default function DashboardPage() {
             Track pantry risk, cart approvals, simulations, and proofs at a
             glance. Real data streams in once you connect your wallet.
           </p>
+          <p className="text-sm text-muted-foreground">
+            Signed in as {user?.role ?? "wallet user"} — {address}
+          </p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" asChild>
-            <Link href="/sign-in">Connect wallet</Link>
+            <Link href="/settings">Safety settings</Link>
           </Button>
           <Button asChild>
-            <Link href="/sign-in">Start onboarding</Link>
+            <Link href={`/household/pantry`}>Open workspace</Link>
           </Button>
         </div>
       </header>
 
-      <Tabs defaultValue="household" className="w-full">
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "household" | "farmer")} className="w-full">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="household">Household</TabsTrigger>
           <TabsTrigger value="farmer">Farmer</TabsTrigger>
@@ -165,19 +222,19 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
               <Button variant="outline" asChild className="gap-2">
-                <Link href="/sign-in">
+                <Link href="/privacy/midnight">
                   Generate ZK proof
                   <Sparkles className="h-4 w-4" />
                 </Link>
               </Button>
               <Button variant="outline" asChild className="gap-2">
-                <Link href="/sign-in">
+                <Link href="/farmer/fields">
                   Run SpaceAgri simulation
                   <Leaf className="h-4 w-4" />
                 </Link>
               </Button>
               <Button asChild className="gap-2">
-                <Link href="/sign-in">
+                <Link href="/settings">
                   Trigger x402 premium call
                   <CreditCard className="h-4 w-4" />
                 </Link>

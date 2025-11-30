@@ -2,19 +2,28 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "../theme-toggle";
 
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/sign-in", label: "Sign in" },
-];
-
 export function SiteHeader() {
   const pathname = usePathname();
+  const { user, isConnected, isLoadingUser, convexConfigured, address } = useCurrentUser();
+
+  const navItems = [
+    { href: "/", label: "Home" },
+    { href: "/dashboard", label: "Dashboard" },
+    ...(!isConnected || (convexConfigured && !user)
+      ? [{ href: "/sign-in", label: isConnected ? "Finish onboarding" : "Sign in" }]
+      : []),
+  ];
+
+  const roleLabel =
+    user?.role === "farmer" ? "Farmer workspace" : user?.role === "household" ? "Household workspace" : null;
+
+  const shortAddress = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : null;
 
   return (
     <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
@@ -42,6 +51,15 @@ export function SiteHeader() {
             ))}
           </ul>
           <div className="flex items-center gap-3">
+            {roleLabel && (
+              <div className="hidden items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground md:flex">
+                <span>{roleLabel}</span>
+                {shortAddress && <span className="text-foreground">{shortAddress}</span>}
+              </div>
+            )}
+            {isLoadingUser && convexConfigured && (
+              <span className="hidden text-xs text-muted-foreground md:inline">Loading profile…</span>
+            )}
             <Button asChild variant="ghost" size="sm" className="md:hidden">
               <Link href="/dashboard">Dashboard</Link>
             </Button>
