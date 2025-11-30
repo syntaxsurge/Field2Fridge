@@ -6,9 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "format": "prettier --write .",
+    "format:code": "prettier --write \"**/*.{ts,tsx,js,jsx,cjs,mjs,cts,mts,json,css,scss,mdx,html}\"",
+    "lint:all": "pnpm lint:fix && pnpm lint && pnpm format:code",
     "typecheck": "tsc --noEmit",
+    "build:contract": "cd blockchain/bnb/hardhat && pnpm run compile",
     "convex:dev": "node ./scripts/convex-dev.cjs",
+    "convex:deploy": "npx convex deploy -y",
+    "convex:redeploy": "pnpm convex:deploy && pnpm convex:dev",
+    "convex:reset": "dotenv -e .env -e .env.local -- tsx scripts/reset-convex.ts",
     "payments:dev": "tsx payments/server.ts",
     "contracts:compile": "cd blockchain/bnb/hardhat && pnpm install && pnpm run compile"
   },
@@ -52,6 +60,7 @@
     "tailwindcss": "^3.4.15",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "prettier": "^3.3.3"
   }
 }
