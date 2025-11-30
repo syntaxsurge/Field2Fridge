@@ -20,6 +20,7 @@ export function Providers({
 }) {
   const [queryClient] = useState(() => new QueryClient());
   const [mounted, setMounted] = useState(false);
+  const content = convexClient ? <ConvexProvider client={convexClient}>{children}</ConvexProvider> : children;
 
   useEffect(() => setMounted(true), []);
 
@@ -27,7 +28,7 @@ export function Providers({
     <WagmiProvider config={wagmiConfig} initialState={initialState}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {mounted && (
+          {mounted ? (
             <RainbowKitProvider
               modalSize="compact"
               initialChain={defaultChain}
@@ -36,10 +37,11 @@ export function Providers({
                 darkMode: darkTheme({ borderRadius: "large", overlayBlur: "small" }),
               }}
             >
-              {convexClient ? <ConvexProvider client={convexClient}>{children}</ConvexProvider> : children}
+              {content}
             </RainbowKitProvider>
+          ) : (
+            content
           )}
-          {!mounted && children}
         </ThemeProvider>
       </QueryClientProvider>
     </WagmiProvider>
