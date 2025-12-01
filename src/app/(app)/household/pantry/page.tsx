@@ -5,11 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { HouseholdNavTabs } from "@/components/layout/household-nav-tabs";
 import { PantryItem, daysUntilEmpty } from "@/features/household/services/cart";
 import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMemo, useState } from "react";
+
+const UNIT_OPTIONS = ["pcs", "kg", "g", "L", "mL", "packs", "bottles"];
+
+type PantryListItem = PantryItem & { _id?: Id<"pantry_items"> };
+const DEFAULT_FORM: PantryItem = { name: "", quantity: 0, unit: "pcs", avgDailyUse: 0 };
 
 export default function PantryPage() {
   const { user, isConnected, isLoadingUser, convexConfigured } = useCurrentUser();
@@ -21,12 +35,8 @@ export default function PantryPage() {
   const logAudit = useMutation(api.functions.audit.logAuditEvent);
   const [status, setStatus] = useState<string>();
   const [error, setError] = useState<string>();
-  const [form, setForm] = useState<PantryItem>({
-    name: "",
-    quantity: 0,
-    unit: "pcs",
-    avgDailyUse: 0,
-  });
+  const [form, setForm] = useState<PantryItem>({ ...DEFAULT_FORM });
+  const [editingId, setEditingId] = useState<Id<"pantry_items"> | null>(null);
 
   const handleSave = async () => {
     if (!user) {
@@ -40,17 +50,21 @@ export default function PantryPage() {
     setError(undefined);
     setStatus("Saving item...");
     try {
-      await upsertItem({
+      const payload = {
         userId: user._id,
+        id: editingId ?? undefined,
         name: form.name.trim(),
         quantity: Number.isFinite(form.quantity) ? form.quantity : 0,
         unit: form.unit.trim() || "pcs",
         avgDailyUse: Number.isFinite(form.avgDailyUse) ? form.avgDailyUse ?? 0 : 0,
-      });
+      };
+      const savedId = await upsertItem(payload);
       await logAudit({
         userId: user._id,
         type: "pantry_item",
         payload: {
+          action: editingId ? "update" : "create",
+          id: savedId ?? editingId ?? undefined,
           name: form.name.trim(),
           quantity: form.quantity,
           unit: form.unit,
@@ -58,7 +72,8 @@ export default function PantryPage() {
         },
       });
       setStatus("Saved");
-      setForm({ name: "", quantity: 0, unit: "pcs", avgDailyUse: 0 });
+      setForm({ ...DEFAULT_FORM });
+      setEditingId(null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -67,8 +82,9 @@ export default function PantryPage() {
   };
 
   const list = useMemo(() => {
-    if (!items) return [] as PantryItem[];
+    if (!items) return [] as PantryListItem[];
     return items.map((item) => ({
+      _id: item._id as Id<"pantry_items">,
       name: typeof item.name === "string" ? item.name : "Unknown",
       quantity: typeof item.quantity === "number" ? item.quantity : 0,
       unit: typeof item.unit === "string" ? item.unit : "unit",
@@ -76,6 +92,21 @@ export default function PantryPage() {
     }));
   }, [items]);
   const loading = items === undefined || isLoadingUser;
+
+  const onSelectItem = (item: PantryListItem) => {
+    setEditingId(item._id ?? null);
+    setForm({
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      avgDailyUse: item.avgDailyUse ?? 0,
+    });
+  };
+
+  const resetForm = () => {
+    setForm({ ...DEFAULT_FORM });
+    setEditingId(null);
+  };
 
   if (!convexConfigured) {
     return (
@@ -117,6 +148,8 @@ export default function PantryPage() {
         </div>
       </div>
 
+      <HouseholdNavTabs />
+
       <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
         <Card>
           <CardHeader>
@@ -140,10 +173,26 @@ export default function PantryPage() {
                   const days = daysUntilEmpty(item);
                   const status =
                     days === Infinity ? "Unknown" : days <= 3 ? "Critical" : days <= 7 ? "Watch" : "Healthy";
+                  const isEditing = editingId && item._id && editingId === item._id;
+                  const key =
+                    item._id && typeof item._id.toString === "function"
+                      ? item._id.toString()
+                      : `${item.name}-${item.unit}`;
                   return (
                     <div
-                      key={`${item.name}-${item.unit}`}
-                      className="grid grid-cols-4 items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2 text-sm"
+                      key={key}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onSelectItem(item)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onSelectItem(item);
+                        }
+                      }}
+                      className={`grid grid-cols-4 items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2 text-sm transition hover:border-primary/60 hover:bg-background ${
+                        isEditing ? "border-primary bg-background" : ""
+                      }`}
                     >
                       <span className="font-medium">{item.name}</span>
                       <span>
@@ -186,12 +235,18 @@ export default function PantryPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="unit">Unit</Label>
-                <Input
-                  id="unit"
-                  value={form.unit}
-                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                  placeholder="pcs / kg / L"
-                />
+                <Select value={form.unit} onValueChange={(value: string) => setForm((f) => ({ ...f, unit: value }))}>
+                  <SelectTrigger id="unit" aria-label="Select unit">
+                    <SelectValue placeholder="Choose a unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((unit) => (
+                      <SelectItem key={unit} value={unit}>
+                        {unit}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="space-y-2">
@@ -204,9 +259,16 @@ export default function PantryPage() {
               />
               <p className="text-xs text-muted-foreground">Example: 0.6 L/day for milk.</p>
             </div>
-            <Button onClick={handleSave} className="w-full" disabled={!!status}>
-              {status ?? "Save"}
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button onClick={handleSave} className="w-full" disabled={!!status}>
+                {status ?? (editingId ? "Update item" : "Save item")}
+              </Button>
+              {editingId && (
+                <Button variant="outline" className="w-full" onClick={resetForm}>
+                  Cancel edit
+                </Button>
+              )}
+            </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </CardContent>
         </Card>

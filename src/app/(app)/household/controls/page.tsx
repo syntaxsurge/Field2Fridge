@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HouseholdNavTabs } from "@/components/layout/household-nav-tabs";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
@@ -120,6 +121,8 @@ export default function ControlsPage() {
           Spend caps, vendor allowlists, and approval modes the agent must follow.
         </p>
       </div>
+
+      <HouseholdNavTabs />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
