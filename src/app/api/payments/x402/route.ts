@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hexToSignature, verifyMessage } from "viem";
+import type { Id } from "../../../../../convex/_generated/dataModel";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../../../convex/_generated/api";
 
 const REQUIRED_PRICE_USD = 0.5;
 const REQUIRED_TOKEN = "F2FS";
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+const convexClient = convexUrl ? new ConvexHttpClient(convexUrl) : null;
 
 export async function POST(req: NextRequest) {
   const paymentHeader = req.headers.get("x-payment");
@@ -49,6 +54,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });
   }
 
-  // For now, acceptance is signature-based; production would also check on-chain payment/allowlists.
+  // Optional policy check via Convex household settings
+  if (convexClient) {
+    try {
+      const user = (await convexClient.query(api.functions.users.getUserByWallet, {
+        wallet: parsed.address,
+      })) as { _id?: string } | null;
+      if (user?._id) {
+        const settings = (await convexClient.query(api.functions.household.fetchSettings, {
+          userId: user._id as Id<"users">,
+        })) as { perOrderCap?: number } | null;
+        if (settings?.perOrderCap && REQUIRED_PRICE_USD > settings.perOrderCap) {
+          return NextResponse.json(
+            { error: `Price $${REQUIRED_PRICE_USD.toFixed(2)} exceeds per-order cap of $${settings.perOrderCap}` },
+            { status: 403 }
+          );
+        }
+      }
+    } catch (err) {
+      return NextResponse.json({ error: (err as Error).message }, { status: 502 });
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

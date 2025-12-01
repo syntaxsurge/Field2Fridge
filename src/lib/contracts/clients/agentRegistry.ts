@@ -1,25 +1,21 @@
-import { createPublicClient, http } from "viem";
-import { bsc, bscTestnet } from "wagmi/chains";
+import { createPublicClient, createWalletClient, http } from "viem";
+import { bscTestnet } from "viem/chains";
 import agentRegistryAbi from "../abi/Field2FridgeAgentRegistry.json";
 import { CONTRACT_ADDRESSES } from "../addresses";
 
-const transport = {
-  [bscTestnet.id]: http("https://data-seed-prebsc-1-s1.bnbchain.org:8545"),
-  [bsc.id]: http("https://bsc-dataseed1.binance.org"),
-} as const;
+export const agentRegistryAddress = CONTRACT_ADDRESSES.bscTestnet.Field2FridgeAgentRegistry as `0x${string}`;
 
-export function getAgentRegistryClient(chainId: number = bscTestnet.id) {
-  const chain = chainId === bsc.id ? bsc : bscTestnet;
-  return createPublicClient({ chain, transport: transport[chain.id] });
+export const publicAgentRegistryClient = createPublicClient({
+  chain: bscTestnet,
+  transport: http(process.env.BSC_TESTNET_RPC_URL),
+});
+
+export function createAgentRegistryWalletClient(account: `0x${string}`) {
+  return createWalletClient({
+    account,
+    chain: bscTestnet,
+    transport: http(process.env.BSC_TESTNET_RPC_URL),
+  });
 }
 
-export async function fetchTokenUri(tokenId: bigint, chainId?: number) {
-  const client = getAgentRegistryClient(chainId);
-  return client.readContract({
-    address: CONTRACT_ADDRESSES.bscTestnet
-      .Field2FridgeAgentRegistry as `0x${string}`,
-    abi: agentRegistryAbi,
-    functionName: "tokenURI",
-    args: [tokenId],
-  }) as Promise<string>;
-}
+export const agentRegistryAbiTyped = agentRegistryAbi.abi;
