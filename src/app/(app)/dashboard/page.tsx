@@ -19,7 +19,6 @@ import {
   Leaf,
   Lock,
   ShoppingBag,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -282,19 +281,6 @@ export default function DashboardPage() {
             </Card>
             <Card>
               <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">ZK proof</CardTitle>
-                <CardDescription>Sustainability attestation on Midnight.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-semibold">Not submitted</p>
-                  <p className="text-sm text-muted-foreground">Generate a proof from the Midnight tab.</p>
-                </div>
-                <Sparkles className="h-10 w-10 text-primary" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="space-y-1">
                 <CardTitle className="text-lg">Agent activity</CardTitle>
                 <CardDescription>Recent audit trail entries.</CardDescription>
               </CardHeader>
@@ -315,16 +301,10 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Next actions</CardTitle>
               <CardDescription>
-                Queue up the next Midnight proof and SpaceAgri simulation.
+                Queue up the next SpaceAgri simulation and review guardrails.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
-              <Button variant="outline" asChild className="gap-2">
-                <Link href="/privacy/midnight">
-                  Generate ZK proof
-                  <Sparkles className="h-4 w-4" />
-                </Link>
-              </Button>
               <Button variant="outline" asChild className="gap-2">
                 <Link href="/farmer/fields">
                   Run SpaceAgri simulation
