@@ -232,6 +232,12 @@ export const recordCartDecision = mutationGeneric({
         )} exceeds per-order cap of $${settings.perOrderCap.toFixed(2)}`
       );
     }
+    if (args.decision === "approved" && settings && args.vendor) {
+      const isAllowed = Boolean(settings.vendors?.[args.vendor]);
+      if (!isAllowed) {
+        throw new Error(`Vendor ${args.vendor} is not allowed by your settings.`);
+      }
+    }
 
     await ctx.db.insert("cart_events", {
       userId: args.userId,

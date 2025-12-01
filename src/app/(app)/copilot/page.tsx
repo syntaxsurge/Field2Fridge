@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { assertWithinPerOrderCap, enforceMaxSpend } from "@/lib/guards/spend";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -28,12 +29,11 @@ export default function CopilotPage() {
   const ask = async () => {
     if (!input.trim()) return;
     const question = input.trim();
-    if (settings && premiumCost > settings.perOrderCap) {
-      setError(
-        `Copilot request cost $${premiumCost.toFixed(
-          2
-        )} exceeds your per-order cap of $${settings.perOrderCap.toFixed(2)}. Lower cost or raise cap in Safety settings.`
-      );
+    try {
+      assertWithinPerOrderCap(premiumCost, settings?.perOrderCap, "per-order cap");
+      enforceMaxSpend(premiumCost, user?.prefs?.maxSpend);
+    } catch (err) {
+      setError((err as Error).message);
       return;
     }
     setMessages((prev) => [...prev, { role: "user", content: question }]);
@@ -52,11 +52,19 @@ export default function CopilotPage() {
       }
       const answer = data.answer ?? "No answer";
       setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
-      if (user?._id) {
+      if (user?._id && user?.prefs?.telemetry !== false) {
         await logAudit({
           userId: user._id,
           type: "copilot_chat",
           payload: { question, answer },
+        });
+        void fetch("/api/membase/snapshot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            wallet: user.wallet,
+            snapshot: { question, answer, source: "copilot" },
+          }),
         });
       }
     } catch (err) {

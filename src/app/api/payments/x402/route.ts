@@ -3,6 +3,7 @@ import { hexToSignature, verifyMessage } from "viem";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../convex/_generated/api";
+import { assertWithinPerOrderCap, enforceMaxSpend } from "@/lib/guards/spend";
 
 const REQUIRED_PRICE_USD = 0.5;
 const REQUIRED_TOKEN = "F2FS";
@@ -57,18 +58,21 @@ export async function POST(req: NextRequest) {
   // Optional policy check via Convex household settings
   if (convexClient) {
     try {
-      const user = (await convexClient.query(api.functions.users.getUserByWallet, {
-        wallet: parsed.address,
-      })) as { _id?: string } | null;
+      const user = (await convexClient.query(api.functions.users.getUserByWallet, { wallet: parsed.address })) as
+        | { _id?: string; prefs?: { maxSpend?: number } }
+        | null;
       if (user?._id) {
-        const settings = (await convexClient.query(api.functions.household.fetchSettings, {
-          userId: user._id as Id<"users">,
-        })) as { perOrderCap?: number } | null;
-        if (settings?.perOrderCap && REQUIRED_PRICE_USD > settings.perOrderCap) {
-          return NextResponse.json(
-            { error: `Price $${REQUIRED_PRICE_USD.toFixed(2)} exceeds per-order cap of $${settings.perOrderCap}` },
-            { status: 403 }
-          );
+        const [settings] = await Promise.all([
+          convexClient.query(api.functions.household.fetchSettings, {
+            userId: user._id as Id<"users">,
+          }),
+        ]);
+        const perOrderCap = (settings as { perOrderCap?: number } | null)?.perOrderCap;
+        try {
+          assertWithinPerOrderCap(REQUIRED_PRICE_USD, perOrderCap, "per-order cap");
+          enforceMaxSpend(REQUIRED_PRICE_USD, user.prefs?.maxSpend);
+        } catch (err) {
+          return NextResponse.json({ error: (err as Error).message }, { status: 403 });
         }
       }
     } catch (err) {
