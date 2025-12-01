@@ -10,6 +10,7 @@ import { Id } from "../../../../../convex/_generated/dataModel";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function CartPage() {
   const { user, isConnected, convexConfigured, isLoadingUser } = useCurrentUser();
@@ -40,6 +41,9 @@ export default function CartPage() {
     try {
       await recordDecision({ userId: user._id, decision: "approved", vendor, cart });
       setStatus("Approved");
+      toast.success("Cart approved", {
+        description: "Sandbox cart created under your current caps.",
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -62,6 +66,9 @@ export default function CartPage() {
         cart: cartData?.suggestions ?? [],
       });
       setStatus("Declined");
+      toast.message("Cart declined", {
+        description: "We’ll recompute suggestions on the next data refresh.",
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -81,6 +88,7 @@ export default function CartPage() {
         }
       );
       setStatus("Fulfilled");
+      toast.success("Marked fulfilled", { description: "Last cart marked as fulfilled." });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -183,7 +191,7 @@ export default function CartPage() {
                   <p className="font-medium">Approval mode</p>
                   <p className="text-muted-foreground">
                     {cartData?.approvalMode === "auto"
-                      ? `Auto-approve under $${cartData.perOrderCap.toFixed(2)}`
+                      ? `Auto-approve under $${cartData.perOrderCap.toFixed(2)} cap`
                       : "Always ask"}
                   </p>
                 </div>

@@ -10,6 +10,8 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
+import { Check } from "lucide-react";
 
 type ControlsState = {
   weeklyBudget: number;
@@ -40,11 +42,17 @@ export default function ControlsPage() {
 
   useEffect(() => {
     if (settings) {
+      const mergedVendors = {
+        "Local Co-op": true,
+        Amazon: true,
+        Walmart: true,
+        ...settings.vendors,
+      };
       setControls({
         weeklyBudget: settings.weeklyBudget,
         perOrderCap: settings.perOrderCap,
         approvalMode: settings.approvalMode as "ask" | "auto",
-        vendors: settings.vendors,
+        vendors: mergedVendors,
       });
     }
   }, [settings]);
@@ -72,6 +80,9 @@ export default function ControlsPage() {
       .then(async () => {
         setStatus("Saved");
         setToastMessage("Controls saved. Future carts will honor these guardrails.");
+        toast.success("Controls saved", {
+          description: "New caps and vendor rules will apply to future carts.",
+        });
         if (user.prefs?.telemetry !== false) {
           await logAudit({
             userId: user._id,
@@ -156,6 +167,9 @@ export default function ControlsPage() {
                   setControls((prev) => ({ ...prev, perOrderCap: parseFloat(e.target.value || "0") }))
                 }
               />
+              <p className="text-sm text-muted-foreground">
+                We auto-approve carts at or below this cap when auto-approval is on.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -166,17 +180,23 @@ export default function ControlsPage() {
             <CardDescription>Allow/deny marketplaces for sandbox orders.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {vendorList.map((vendor) => (
-              <label key={vendor} className="flex items-center justify-between rounded-md border px-3 py-2">
-                <span className="font-medium">{vendor}</span>
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={controls.vendors[vendor]}
-                  onChange={() => toggleVendor(vendor)}
-                />
-              </label>
-            ))}
+            {vendorList.map((vendor) => {
+              const allowed = Boolean(controls.vendors[vendor]);
+              return (
+                <Button
+                  key={vendor}
+                  variant={allowed ? "secondary" : "outline"}
+                  className="w-full justify-between"
+                  onClick={() => toggleVendor(vendor)}
+                >
+                  <span className="font-medium">{vendor}</span>
+                  {allowed && <Check className="h-4 w-4" />}
+                </Button>
+              );
+            })}
+            <p className="text-sm text-muted-foreground">
+              Auto-cart will only propose orders from allowed vendors.
+            </p>
           </CardContent>
         </Card>
       </div>

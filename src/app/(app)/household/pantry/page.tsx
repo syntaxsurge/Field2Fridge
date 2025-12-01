@@ -18,12 +18,44 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type JSX } from "react";
+import { AlertTriangle, CheckCircle2, Eye } from "lucide-react";
 
 const UNIT_OPTIONS = ["pcs", "kg", "g", "L", "mL", "packs", "bottles"];
 
 type PantryListItem = PantryItem & { _id?: Id<"pantry_items"> };
 const DEFAULT_FORM: PantryItem = { name: "", quantity: 0, unit: "pcs", avgDailyUse: 0 };
+
+type Status = "Comfortable" | "Watch" | "Critical" | "Unknown";
+
+const statusStyles: Record<
+  Status,
+  { className: string; icon: JSX.Element | null }
+> = {
+  Comfortable: {
+    className: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+  },
+  Watch: {
+    className: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+    icon: <Eye className="h-3.5 w-3.5" />,
+  },
+  Critical: {
+    className: "bg-red-500/10 text-red-300 border-red-500/30",
+    icon: <AlertTriangle className="h-3.5 w-3.5" />,
+  },
+  Unknown: {
+    className: "bg-muted text-muted-foreground",
+    icon: null,
+  },
+};
+
+function computeStatus(days: number): Status {
+  if (days === Infinity) return "Unknown";
+  if (days > 5) return "Comfortable";
+  if (days > 2) return "Watch";
+  return "Critical";
+}
 
 export default function PantryPage() {
   const { user, isConnected, isLoadingUser, convexConfigured } = useCurrentUser();
@@ -171,14 +203,8 @@ export default function PantryPage() {
                 </div>
                 {list.map((item) => {
                   const days = daysUntilEmpty(item);
-                  const status =
-                    days === Infinity
-                      ? "Unknown"
-                      : days > 5
-                        ? "Comfortable"
-                        : days > 2
-                          ? "Watch"
-                          : "Critical";
+                  const status = computeStatus(days);
+                  const style = statusStyles[status];
                   const isEditing = editingId && item._id && editingId === item._id;
                   const key =
                     item._id && typeof item._id.toString === "function"
@@ -205,15 +231,8 @@ export default function PantryPage() {
                         {item.quantity} {item.unit}
                       </span>
                       <span>{days === Infinity ? "—" : days.toFixed(1)}</span>
-                      <Badge
-                        variant={
-                          status === "Comfortable"
-                            ? "outline"
-                            : status === "Watch"
-                              ? "secondary"
-                              : "secondary"
-                        }
-                      >
+                      <Badge className={`gap-1 ${style.className}`}>
+                        {style.icon}
                         {status}
                       </Badge>
                     </div>
