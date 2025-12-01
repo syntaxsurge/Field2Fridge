@@ -20,6 +20,7 @@ export type UserProfile = {
   role: string;
   createdAt: number;
   prefs?: UserPrefs;
+  network?: string;
 };
 
 const convexAvailable = Boolean(convexClient);

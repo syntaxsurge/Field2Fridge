@@ -44,6 +44,7 @@ export const createOrUpdateUser = mutationGeneric({
     wallet: v.string(),
     role: v.string(), // "household" | "farmer" | "both"
     prefs: v.optional(v.any()),
+    network: v.optional(v.string()),
   },
   handler: async (ctx: MutationCtx, args) => {
     const existing = await ctx.db
@@ -52,11 +53,13 @@ export const createOrUpdateUser = mutationGeneric({
       .unique();
 
     const now = Date.now();
+    const network = args.network ?? "bsc-testnet";
 
     if (existing) {
       await ctx.db.patch(existing._id as GenericId<"users">, {
         role: args.role,
         ...(args.prefs ? { prefs: args.prefs } : {}),
+        network,
       });
       if (args.role === "household") {
         await ensureHouseholdSettings(ctx, existing._id as GenericId<"users">);
@@ -68,6 +71,7 @@ export const createOrUpdateUser = mutationGeneric({
       wallet: args.wallet,
       role: args.role,
       createdAt: now,
+      network,
       ...(args.prefs ? { prefs: args.prefs } : {}),
     });
     if (args.role === "household") {
