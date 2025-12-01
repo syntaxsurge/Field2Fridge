@@ -90,6 +90,9 @@ export const updatePrefs = mutationGeneric({
       allowDenyLists: v.boolean(),
       telemetry: v.boolean(),
       maxSpend: v.number(),
+      maxOnchainUsd: v.number(),
+      allowedContracts: v.array(v.string()),
+      blockedContracts: v.array(v.string()),
     }),
   },
   handler: async (ctx: MutationCtx, args) => {

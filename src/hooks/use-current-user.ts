@@ -12,6 +12,9 @@ export type UserPrefs = {
   allowDenyLists: boolean;
   telemetry: boolean;
   maxSpend: number;
+  maxOnchainUsd: number;
+  allowedContracts: string[];
+  blockedContracts: string[];
 };
 
 const DEFAULT_PREFS: UserPrefs = {
@@ -20,6 +23,9 @@ const DEFAULT_PREFS: UserPrefs = {
   allowDenyLists: true,
   telemetry: false,
   maxSpend: 250,
+  maxOnchainUsd: 50,
+  allowedContracts: [],
+  blockedContracts: [],
 };
 
 export type UserProfile = {

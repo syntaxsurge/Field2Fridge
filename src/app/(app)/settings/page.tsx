@@ -17,6 +17,9 @@ type SettingsState = {
   allowDenyLists: boolean;
   telemetry: boolean;
   maxSpend: number;
+  maxOnchainUsd: number;
+  allowedContracts: string;
+  blockedContracts: string;
 };
 
 const defaults: SettingsState = {
@@ -25,6 +28,9 @@ const defaults: SettingsState = {
   allowDenyLists: true,
   telemetry: false,
   maxSpend: 250,
+  maxOnchainUsd: 50,
+  allowedContracts: "",
+  blockedContracts: "",
 };
 
 export default function SettingsPage() {
@@ -47,6 +53,9 @@ export default function SettingsPage() {
         allowDenyLists: prefs.allowDenyLists,
         telemetry: prefs.telemetry,
         maxSpend: prefs.maxSpend,
+        maxOnchainUsd: prefs.maxOnchainUsd,
+        allowedContracts: (prefs.allowedContracts ?? []).join(", "),
+        blockedContracts: (prefs.blockedContracts ?? []).join(", "),
       });
     } else {
       setState(defaults);
@@ -68,6 +77,15 @@ export default function SettingsPage() {
         allowDenyLists: state.allowDenyLists,
         telemetry: state.telemetry,
         maxSpend: state.maxSpend,
+        maxOnchainUsd: state.maxOnchainUsd,
+        allowedContracts: state.allowedContracts
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean),
+        blockedContracts: state.blockedContracts
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean),
       },
     })
       .then(() => setSaved(`Saved at ${new Date().toLocaleTimeString()}`))
@@ -153,6 +171,14 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">
               Used by the x402 gateway and Copilot risk checks before submitting transactions.
             </p>
+            <Label htmlFor="maxOnchainUsd">Max per on-chain tx</Label>
+            <Input
+              id="maxOnchainUsd"
+              type="number"
+              value={state.maxOnchainUsd}
+              onChange={(e) => setState((s) => ({ ...s, maxOnchainUsd: parseFloat(e.target.value || "0") }))}
+            />
+            <p className="text-xs text-muted-foreground">Guardrail for Q402-backed executions.</p>
           </CardContent>
         </Card>
 
@@ -194,7 +220,7 @@ export default function SettingsPage() {
           <CardTitle>Protections</CardTitle>
           <CardDescription>Guardrails the agent must enforce before execution.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+          <CardContent className="space-y-3">
           <label className="flex items-center justify-between rounded-md border px-3 py-2">
             <div>
               <p className="font-medium">Transaction warnings</p>
@@ -238,6 +264,36 @@ export default function SettingsPage() {
             {saved && <p className="text-sm text-muted-foreground">{saved}</p>}
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Contract allow/deny lists</CardTitle>
+          <CardDescription>Restrict Q402 executions to known-safe contracts.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="allowedContracts">Allowed contracts (comma-separated)</Label>
+            <Input
+              id="allowedContracts"
+              value={state.allowedContracts}
+              onChange={(e) => setState((s) => ({ ...s, allowedContracts: e.target.value }))}
+              placeholder="0x...,0x..."
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="blockedContracts">Blocked contracts (comma-separated)</Label>
+            <Input
+              id="blockedContracts"
+              value={state.blockedContracts}
+              onChange={(e) => setState((s) => ({ ...s, blockedContracts: e.target.value }))}
+              placeholder="0x...,0x..."
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Enforced before Q402/x-payment executions in Copilot Execute mode.
+          </p>
         </CardContent>
       </Card>
     </main>
