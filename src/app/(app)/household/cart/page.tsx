@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CartSuggestion, summarizeCart } from "@/features/household/services/cart";
 import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
@@ -17,18 +18,26 @@ export default function CartPage() {
   );
   const events = useQuery(api.functions.household.listCartEvents, user ? { userId: user._id } : "skip");
   const recordDecision = useMutation(api.functions.household.recordCartDecision);
+  const updateCartStatus = useMutation(api.functions.household.updateCartStatus);
   const [status, setStatus] = useState<string>();
   const [error, setError] = useState<string>();
+  const vendor = cartData?.vendor ?? null;
+  const lastEvent = events && events.length > 0 ? events[0] : null;
+  const lastStatus = lastEvent?.fulfillmentStatus;
 
   const approve = async (cart: CartSuggestion[]) => {
     if (!user) {
       setError("Connect your wallet and finish onboarding to approve carts.");
       return;
     }
+    if (!vendor) {
+      setError("No allowed vendors set. Update Safety & Controls to allow at least one vendor.");
+      return;
+    }
     setStatus("Submitting approval...");
     setError(undefined);
     try {
-      await recordDecision({ userId: user._id, decision: "approved", cart });
+      await recordDecision({ userId: user._id, decision: "approved", vendor, cart });
       setStatus("Approved");
     } catch (err) {
       setError((err as Error).message);
@@ -45,8 +54,32 @@ export default function CartPage() {
     setStatus("Declining...");
     setError(undefined);
     try {
-      await recordDecision({ userId: user._id, decision: "declined", cart: cartData?.suggestions ?? [] });
+      await recordDecision({
+        userId: user._id,
+        decision: "declined",
+        vendor: vendor ?? undefined,
+        cart: cartData?.suggestions ?? [],
+      });
       setStatus("Declined");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setTimeout(() => setStatus(undefined), 1400);
+    }
+  };
+
+  const markFulfilled = async () => {
+    if (!user || !lastEvent) return;
+    setStatus("Marking fulfilled...");
+    try {
+      await updateCartStatus(
+        {
+          userId: user._id,
+          cartEventId: lastEvent._id as Id<"cart_events">,
+          fulfillmentStatus: "fulfilled",
+        }
+      );
+      setStatus("Fulfilled");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -147,13 +180,24 @@ export default function CartPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={() => approve(suggestions)} disabled={!!status || suggestions.length === 0}>
-                  {status ?? "Approve & create sandbox cart"}
-                </Button>
-                <Button variant="outline" onClick={decline} disabled={!!status}>
-                  Decline &amp; recompute
-                </Button>
+             <div className="flex flex-wrap gap-3">
+               <Button onClick={() => approve(suggestions)} disabled={!!status || suggestions.length === 0}>
+                 {status ?? "Approve & create sandbox cart"}
+               </Button>
+               <Button variant="outline" onClick={decline} disabled={!!status}>
+                 Decline &amp; recompute
+               </Button>
+                {lastEvent && lastEvent.fulfillmentStatus === "pending" && (
+                  <Button variant="secondary" onClick={markFulfilled} disabled={!!status}>
+                    Mark fulfilled
+                  </Button>
+                )}
+                {lastStatus && (
+                  <p className="text-xs text-muted-foreground">
+                    Last cart status: {String(lastStatus)}{" "}
+                    {lastEvent?.vendor ? `(vendor: ${lastEvent.vendor as string})` : ""}
+                  </p>
+                )}
               </div>
             </>
           )}
@@ -190,6 +234,12 @@ export default function CartPage() {
                       {new Date(createdAt).toLocaleString()}
                     </span>
                   </div>
+                  {entry.vendor && (
+                    <p className="text-xs text-muted-foreground">Vendor: {String(entry.vendor)}</p>
+                  )}
+                  {entry.fulfillmentStatus && (
+                    <p className="text-xs text-muted-foreground">Status: {String(entry.fulfillmentStatus)}</p>
+                  )}
                   <p className="text-muted-foreground">
                     {items.length} items — ${total.toFixed(2)}
                   </p>

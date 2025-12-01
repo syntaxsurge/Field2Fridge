@@ -35,6 +35,8 @@ type CartEvent = {
   _id: GenericId<"cart_events">;
   userId: GenericId<"users">;
   decision: "approved" | "declined";
+  vendor?: string | null;
+  fulfillmentStatus?: string | null;
   items: CartSuggestion[];
   total: number;
   createdAt: number;
@@ -152,6 +154,8 @@ export const overview = queryGeneric({
       approvalMode: effectiveSettings.approvalMode,
       spentThisWeek,
       vendors: effectiveSettings.vendors,
+      lastCartStatus: cartEvents[0]?.fulfillmentStatus ?? null,
+      lastCartVendor: cartEvents[0]?.vendor ?? null,
       upcomingCart:
         suggestions.length === 0
           ? null
@@ -206,6 +210,7 @@ export const recordCartDecision = mutationGeneric({
   args: {
     userId: v.id("users"),
     decision: v.union(v.literal("approved"), v.literal("declined")),
+    vendor: v.optional(v.string()),
     cart: v.array(
       v.object({
         name: v.string(),
@@ -231,6 +236,8 @@ export const recordCartDecision = mutationGeneric({
     await ctx.db.insert("cart_events", {
       userId: args.userId,
       decision: args.decision,
+      vendor: args.vendor ?? null,
+      fulfillmentStatus: args.decision === "approved" ? "pending" : "declined",
       items: args.cart,
       total,
       createdAt: Date.now(),
@@ -253,5 +260,26 @@ export const listCartEvents = queryGeneric({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .order("desc")
       .take(25);
+  },
+});
+
+export const updateCartStatus = mutationGeneric({
+  args: {
+    userId: v.id("users"),
+    cartEventId: v.id("cart_events"),
+    fulfillmentStatus: v.string(),
+  },
+  handler: async (ctx: MutationCtx, args) => {
+    const cart = await ctx.db.get(args.cartEventId);
+    if (!cart || cart.userId !== args.userId) {
+      throw new Error("Cart not found");
+    }
+    await ctx.db.patch(args.cartEventId, { fulfillmentStatus: args.fulfillmentStatus });
+    await ctx.db.insert("audit_logs", {
+      userId: args.userId,
+      type: "cart_status",
+      payload: { cartEventId: args.cartEventId, fulfillmentStatus: args.fulfillmentStatus },
+      createdAt: Date.now(),
+    });
   },
 });
