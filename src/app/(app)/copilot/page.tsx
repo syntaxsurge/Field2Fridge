@@ -119,7 +119,7 @@ export default function CopilotPage() {
             ))}
             {messages.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No questions yet. Ask about spend caps, cart decisions, or how to run a SpaceAgri simulation.
+                No questions yet. Ask about spend caps, cart decisions, or how to run a NASA climate simulation.
               </p>
             )}
           </div>

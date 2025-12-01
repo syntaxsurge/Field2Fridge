@@ -76,6 +76,10 @@ export default function DashboardPage() {
       : null;
   const latestVariety = latestSimulation?.variety ?? null;
   const latestRegion = latestSimulation?.region ?? null;
+  const latestRisk =
+    latestSimulation && typeof latestSimulation.riskScore === "number"
+      ? `${Math.round(latestSimulation.riskScore * 100)}%`
+      : null;
   const registryAddress = CONTRACT_ADDRESSES.bscTestnet.Field2FridgeAgentRegistry;
   const serviceTokenAddress = CONTRACT_ADDRESSES.bscTestnet.Field2FridgeServiceToken;
 
@@ -304,7 +308,7 @@ export default function DashboardPage() {
             <Card>
               <CardHeader className="space-y-1">
                 <CardTitle className="text-lg">Yield outlook</CardTitle>
-                <CardDescription>Last SpaceAgri simulation.</CardDescription>
+                <CardDescription>Last agroclimate simulation (NASA POWER).</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-between">
                 <div>
@@ -317,7 +321,9 @@ export default function DashboardPage() {
                     {latestSimulation === undefined
                       ? "Loading"
                       : latestYield
-                        ? `${latestVariety ?? "Unknown"} — ${latestRegion ?? "Unknown"}`
+                        ? `${latestVariety ?? "Unknown"} — ${latestRegion ?? "Unknown"}${
+                            latestRisk ? ` · Risk ${latestRisk}` : ""
+                          }`
                         : "Run a simulation to populate"}
                   </p>
                 </div>
@@ -346,13 +352,13 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Next actions</CardTitle>
               <CardDescription>
-                Queue up the next SpaceAgri simulation and review guardrails.
+                Queue up the next agroclimate simulation and review guardrails.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
               <Button variant="outline" asChild className="gap-2">
                 <Link href="/farmer/fields">
-                  Run SpaceAgri simulation
+                  Run climate simulation
                   <Leaf className="h-4 w-4" />
                 </Link>
               </Button>
