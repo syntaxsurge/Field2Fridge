@@ -3,6 +3,12 @@
 # dependencies
 /node_modules
 /blockchain/**/node_modules
+/blockchain/**/artifacts
+/blockchain/**/cache
+/blockchain/**/out
+/blockchain/**/broadcast
+/blockchain/**/deployments
+/blockchain/**/typechain-types
 /.pnp
 .pnp.*
 .yarn/*
