@@ -19,7 +19,9 @@
     "convex:redeploy": "pnpm convex:deploy && pnpm convex:dev",
     "convex:reset": "dotenv -e .env -e .env.local -- tsx scripts/reset-convex.ts",
     "payments:dev": "tsx payments/server.ts",
-    "contracts:compile": "cd blockchain/bnb/hardhat && pnpm install && pnpm run compile"
+    "contracts:compile": "cd blockchain/bnb/hardhat && pnpm install && pnpm run compile",
+    "link:q402": "node scripts/link-q402.js",
+    "postinstall": "pnpm link:q402"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
