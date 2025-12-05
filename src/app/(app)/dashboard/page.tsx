@@ -137,11 +137,6 @@ export default function DashboardPage() {
           <Button asChild>
             <Link href={workspaceHref}>Open workspace</Link>
           </Button>
-          {role === "farmer" && (
-            <Button variant="secondary" asChild>
-              <Link href="/farmer/fields">Run climate simulation</Link>
-            </Button>
-          )}
           <Button variant="secondary" asChild>
             <Link href="/copilot">Copilot</Link>
           </Button>

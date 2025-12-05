@@ -10,15 +10,37 @@ import { api } from "../../../../../convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useState } from "react";
-import { WorkspaceShortcuts } from "@/components/layout/workspace-shortcuts";
+
+const EXAMPLES = [
+  {
+    label: "Wheat – Great Plains (USA)",
+    crop: "Wheat",
+    region: "Great Plains",
+    fieldSizeHa: 10,
+    latitude: 39.8283,
+    longitude: -98.5795,
+  },
+  {
+    label: "Corn – Iowa (USA)",
+    crop: "Corn",
+    region: "Iowa",
+    fieldSizeHa: 8,
+    latitude: 42.0,
+    longitude: -93.0,
+  },
+  {
+    label: "Rice – Central India",
+    crop: "Rice",
+    region: "Central India",
+    fieldSizeHa: 5,
+    latitude: 21.0,
+    longitude: 78.0,
+  },
+];
 
 export default function FieldsPage() {
   const { user, isConnected, convexConfigured } = useCurrentUser();
-  const [crop, setCrop] = useState("Wheat");
-  const [region, setRegion] = useState("Great Plains");
-  const [fieldSize, setFieldSize] = useState(10);
-  const [latitude, setLatitude] = useState(39.8283);
-  const [longitude, setLongitude] = useState(-98.5795);
+  const [form, setForm] = useState(EXAMPLES[0]);
   const [results, setResults] = useState<VarietyRecommendation[]>([]);
   const [simulation, setSimulation] = useState<FieldSimulationResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,16 +59,22 @@ export default function FieldsPage() {
     setLoading(true);
     setError(undefined);
     try {
-      const data = await runSimulation({ crop, region, fieldSizeHa: fieldSize, latitude, longitude });
+      const data = await runSimulation({
+        crop: form.crop,
+        region: form.region,
+        fieldSizeHa: form.fieldSizeHa,
+        latitude: form.latitude,
+        longitude: form.longitude,
+      });
       setSimulation(data);
       setResults(data.recommendations);
       const top = data.recommendations[0];
       if (top) {
         await saveSimulation({
           userId: user._id,
-          crop,
-          region,
-          fieldSizeHa: fieldSize,
+          crop: form.crop,
+          region: form.region,
+          fieldSizeHa: form.fieldSizeHa,
           result: top,
           riskScore: data.riskScore,
           climate: {
@@ -56,8 +84,8 @@ export default function FieldsPage() {
             droughtDays: data.climate.droughtDays,
             periodStart: data.climate.startDate,
             periodEnd: data.climate.endDate,
-            latitude,
-            longitude,
+            latitude: form.latitude,
+            longitude: form.longitude,
           },
         });
       }
@@ -98,6 +126,21 @@ export default function FieldsPage() {
     );
   }
 
+  const setField = (key: keyof typeof form, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]:
+        key === "fieldSizeHa" || key === "latitude" || key === "longitude"
+          ? parseFloat(value)
+          : value,
+    }));
+  };
+
+  const useExample = () => {
+    const pick = EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)];
+    setForm(pick);
+  };
+
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 pb-16 pt-12 md:px-10">
       <div className="space-y-2">
@@ -108,16 +151,6 @@ export default function FieldsPage() {
         </p>
       </div>
 
-      <WorkspaceShortcuts
-        links={[
-          { href: "/dashboard", label: "Dashboard" },
-          { href: "/farmer/fields", label: "Fields" },
-          { href: "/household/pantry", label: "Household" },
-          { href: "/copilot", label: "Copilot" },
-          { href: "/settings", label: "Settings" },
-        ]}
-      />
-
       <Card>
         <CardHeader>
           <CardTitle>Simulation inputs</CardTitle>
@@ -126,19 +159,19 @@ export default function FieldsPage() {
         <CardContent className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
           <div className="space-y-2">
             <Label htmlFor="crop">Crop</Label>
-            <Input id="crop" value={crop} onChange={(e) => setCrop(e.target.value)} />
+            <Input id="crop" value={form.crop} onChange={(e) => setField("crop", e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="region">Region</Label>
-            <Input id="region" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="e.g. Great Plains" />
+            <Input id="region" value={form.region} onChange={(e) => setField("region", e.target.value)} placeholder="e.g. Great Plains" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="size">Field size (ha)</Label>
             <Input
               id="size"
               type="number"
-              value={fieldSize}
-              onChange={(e) => setFieldSize(parseFloat(e.target.value || "0"))}
+              value={form.fieldSizeHa}
+              onChange={(e) => setField("fieldSizeHa", e.target.value || "0")}
             />
           </div>
           <div className="space-y-2">
@@ -147,8 +180,8 @@ export default function FieldsPage() {
               id="latitude"
               type="number"
               step="0.0001"
-              value={latitude}
-              onChange={(e) => setLatitude(parseFloat(e.target.value || "0"))}
+              value={form.latitude}
+              onChange={(e) => setField("latitude", e.target.value || "0")}
               placeholder="e.g. 39.8283"
             />
           </div>
@@ -158,15 +191,23 @@ export default function FieldsPage() {
               id="longitude"
               type="number"
               step="0.0001"
-              value={longitude}
-              onChange={(e) => setLongitude(parseFloat(e.target.value || "0"))}
+              value={form.longitude}
+              onChange={(e) => setField("longitude", e.target.value || "0")}
               placeholder="e.g. -98.5795"
             />
           </div>
           <div className="md:col-span-3 lg:col-span-5">
-            <Button onClick={submit} disabled={loading}>
-              {loading ? "Running..." : "Run simulation"}
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={submit} disabled={loading}>
+                {loading ? "Running..." : "Run simulation"}
+              </Button>
+              <Button type="button" variant="outline" onClick={useExample}>
+                Use example field
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Try a prefilled field (Great Plains, Iowa, or India) to see NASA data quickly.
+              </p>
+            </div>
             {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
           </div>
         </CardContent>
