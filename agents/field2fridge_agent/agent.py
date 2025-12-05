@@ -92,19 +92,24 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
 agent.include(protocol, publish_manifest=True)
 
 
-class CartDecision(Model):
+class CartDecisionRequest(Model):
     wallet: str
     vendor: str
     total_usd: float
     status: str
 
 
-@agent.on_rest_post("/cart_decision", CartDecision)
-async def rest_cart_decision(ctx: Context, req: CartDecision):
+class CartDecisionResponse(Model):
+    ok: bool
+    message: str
+
+
+@agent.on_rest_post("/cart_decision", CartDecisionRequest, CartDecisionResponse)
+async def rest_cart_decision(ctx: Context, req: CartDecisionRequest) -> CartDecisionResponse:
     ctx.logger.info(
         f"REST cart_decision from {req.wallet}: {req.status} {req.vendor} ${req.total_usd}"
     )
-    return {"ok": True}
+    return CartDecisionResponse(ok=True, message="Recorded by Field2FridgeASI")
 
 
 if __name__ == "__main__":

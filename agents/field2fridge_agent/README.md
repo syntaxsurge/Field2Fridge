@@ -24,6 +24,8 @@ cp .env.example .env
 
 # 4) Run agent (opens mailbox + REST on port 8001)
 python agent.py
+
+# Useful logs: agent address, Almanac/Agentverse registration, inspector URL.
 ```
 
 When running, you should see logs about Almanac/Agentverse registration and an inspector URL you can open in the browser.
