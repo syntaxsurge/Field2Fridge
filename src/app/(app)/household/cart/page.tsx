@@ -50,6 +50,8 @@ export default function CartPage() {
     setStatus("Submitting approval...");
     setError(undefined);
     try {
+      const vendorName = vendor ?? "unknown";
+      const totalUsd = summarizeCart(cart).total;
       await recordDecision({ userId: user._id, decision: "approved", vendor, cart });
       setStatus("Approved");
       toast.success("Cart approved", {
@@ -58,9 +60,19 @@ export default function CartPage() {
       await recordAgentWebhook({
         wallet: user.wallet,
         items: cart.map((c) => `${c.name} x${c.suggestedQty} ${c.unit}`),
-        totalUsd: summarizeCart(cart).total,
+        totalUsd,
         decision: "approved",
       });
+      void fetch("/api/asi/cart-decision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: user.wallet,
+          vendor: vendorName,
+          totalUsd,
+          status: "approved",
+        }),
+      }).catch(() => undefined);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -76,6 +88,8 @@ export default function CartPage() {
     setStatus("Declining...");
     setError(undefined);
     try {
+      const vendorName = vendor ?? "unknown";
+      const totalUsd = summarizeCart(cartData?.suggestions ?? []).total;
       await recordDecision({
         userId: user._id,
         decision: "declined",
@@ -89,9 +103,19 @@ export default function CartPage() {
       await recordAgentWebhook({
         wallet: user.wallet,
         items: cartData?.suggestions?.map((c) => `${c.name} x${c.suggestedQty} ${c.unit}`) ?? [],
-        totalUsd: summarizeCart(cartData?.suggestions ?? []).total,
+        totalUsd,
         decision: "declined",
       });
+      void fetch("/api/asi/cart-decision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: user.wallet,
+          vendor: vendorName,
+          totalUsd,
+          status: "declined",
+        }),
+      }).catch(() => undefined);
     } catch (err) {
       setError((err as Error).message);
     } finally {
