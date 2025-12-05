@@ -51,6 +51,7 @@ export default defineSchema({
     expectedYieldTPerHa: v.number(),
     traitScore: v.number(),
     notes: v.optional(v.string()),
+    rationale: v.optional(v.string()),
     riskScore: v.optional(v.number()),
     meanTempC: v.optional(v.number()),
     totalRainfallMm: v.optional(v.number()),

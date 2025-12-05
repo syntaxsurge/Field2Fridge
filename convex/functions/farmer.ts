@@ -21,6 +21,7 @@ export const saveSimulation = mutationGeneric({
       expectedYieldTPerHa: v.number(),
       traitScore: v.number(),
       notes: v.optional(v.string()),
+      rationale: v.optional(v.string()),
     }),
     riskScore: v.optional(v.number()),
     climate: v.optional(
@@ -47,6 +48,7 @@ export const saveSimulation = mutationGeneric({
       traitScore: number;
       requestedAt: number;
       notes?: string;
+      rationale?: string;
       riskScore?: number;
       meanTempC?: number;
       totalRainfallMm?: number;
@@ -68,6 +70,9 @@ export const saveSimulation = mutationGeneric({
     };
     if (args.result.notes !== undefined) {
       payload.notes = args.result.notes;
+    }
+    if (args.result.rationale !== undefined) {
+      payload.rationale = args.result.rationale;
     }
     if (args.riskScore !== undefined) {
       payload.riskScore = args.riskScore;
