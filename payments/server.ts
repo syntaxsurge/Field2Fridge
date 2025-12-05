@@ -6,7 +6,7 @@ import { privateKeyToAccount } from "viem/accounts";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { createQ402Middleware } = require("q402/packages/middleware-express/src");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { SupportedNetworks } = require("@q402/core/dist/types/network");
+const { SupportedNetworks } = require("@q402/core");
 
 declare global {
   namespace Express {
