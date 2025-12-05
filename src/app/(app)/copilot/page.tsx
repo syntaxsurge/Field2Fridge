@@ -163,6 +163,23 @@ export default function CopilotPage() {
             network: network === "mainnet" ? "bscMainnet" : "bscTestnet",
           };
 
+    if (actionType === "transfer") {
+      if (!payload.to || !payload.to.startsWith("0x")) {
+        setExecuteError("Enter a valid recipient address.");
+        setExecuteStatus(undefined);
+        return;
+      }
+      if (!Number.isFinite(parseFloat(amount)) || parseFloat(amount) <= 0) {
+        setExecuteError("Enter a positive amount to transfer.");
+        setExecuteStatus(undefined);
+        return;
+      }
+    } else if (!agentId.trim()) {
+      setExecuteError("Provide an agent id to register.");
+      setExecuteStatus(undefined);
+      return;
+    }
+
     const paymentRes = await fetch("/api/actions/payment-details", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -181,7 +198,15 @@ export default function CopilotPage() {
       tx: { to: string; data: string };
     };
 
-    const details = selectPaymentDetails(paymentJson.paymentRequired);
+    if (!paymentJson.paymentRequired || !Array.isArray(paymentJson.paymentRequired.accepts)) {
+      setExecuteError("Gateway did not return payment options.");
+      setExecuteStatus(undefined);
+      return;
+    }
+
+    const details = selectPaymentDetails(paymentJson.paymentRequired, {
+      network: network === "mainnet" ? "bsc-mainnet" : "bsc-testnet",
+    });
     if (!details) {
       setExecuteError("Gateway did not provide payment details.");
       setExecuteStatus(undefined);

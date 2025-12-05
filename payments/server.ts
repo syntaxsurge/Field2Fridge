@@ -6,7 +6,7 @@ import { privateKeyToAccount } from "viem/accounts";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { createQ402Middleware } = require("q402/packages/middleware-express/src");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { SupportedNetworks } = require("q402/packages/core/src/types/network");
+const { SupportedNetworks } = require("@q402/core/dist/types/network");
 
 declare global {
   namespace Express {
@@ -39,6 +39,14 @@ const network =
 
 if (!signerPk) {
   console.warn("Q402_SIGNER_PRIVATE_KEY missing; gateway will still start but cannot settle payments.");
+}
+
+if (!tokenAddress || tokenAddress === "0x0000000000000000000000000000000000000000") {
+  throw new Error("Q402_TOKEN_ADDRESS (or NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS) must be configured.");
+}
+
+if (!implementationContract || implementationContract === "0x0000000000000000000000000000000000000000") {
+  throw new Error("Q402_IMPLEMENTATION_CONTRACT (or NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS) must be configured.");
 }
 
 const chain = network === SupportedNetworks.BSC_MAINNET ? bsc : bscTestnet;
@@ -112,6 +120,15 @@ app.post("/api/execute", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Q402 gateway running on http://localhost:${PORT}`);
+});
+
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`Port ${PORT} is already in use. Stop the other process or set Q402_PORT.`);
+    process.exit(1);
+  }
+  console.error("Gateway server error:", err.message);
+  process.exit(1);
 });

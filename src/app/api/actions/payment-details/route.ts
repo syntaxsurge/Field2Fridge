@@ -19,6 +19,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Convex not configured" }, { status: 500 });
   }
 
+  if (!body.wallet || !body.wallet.startsWith("0x")) {
+    return NextResponse.json({ error: "Wallet address is required" }, { status: 400 });
+  }
+
   const user = await convexClient.query(api.functions.users.getUserByWallet, { wallet: body.wallet });
   const prefs = (user?.prefs as
     | {
@@ -41,17 +45,27 @@ export async function POST(req: NextRequest) {
     enforceMaxSpend(body.usdEstimate, prefs.maxOnchainUsd ?? prefs.maxSpend);
   }
 
-  const paymentProbe = await fetch(`${process.env.Q402_GATEWAY_URL ?? "http://localhost:4020"}/api/execute`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ tx }),
-  });
+  const gateway = process.env.Q402_GATEWAY_URL ?? "http://localhost:4020";
+  let paymentRequired: unknown;
+  try {
+    const paymentProbe = await fetch(`${gateway}/api/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tx }),
+    });
 
-  if (paymentProbe.status !== 402) {
-    return NextResponse.json({ error: "Gateway did not request payment." }, { status: 500 });
+    if (paymentProbe.status !== 402) {
+      const errText = await paymentProbe.text();
+      return NextResponse.json(
+        { error: `Gateway did not return 402: ${paymentProbe.status} ${errText}` },
+        { status: 502 }
+      );
+    }
+
+    paymentRequired = await paymentProbe.json();
+  } catch (err) {
+    return NextResponse.json({ error: `Gateway unreachable: ${(err as Error).message}` }, { status: 502 });
   }
-
-  const paymentRequired = await paymentProbe.json();
 
   return NextResponse.json({ tx, paymentRequired, prefs });
 }

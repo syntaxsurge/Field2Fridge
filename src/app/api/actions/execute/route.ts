@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Convex not configured" }, { status: 500 });
   }
 
+  if (!body.wallet || !body.wallet.startsWith("0x")) {
+    return NextResponse.json({ error: "Wallet address is required" }, { status: 400 });
+  }
+
   const user = await convexClient.query(api.functions.users.getUserByWallet, { wallet: body.wallet });
   const prefs = (user?.prefs as
     | {
@@ -49,15 +53,19 @@ export async function POST(req: NextRequest) {
     enforceMaxSpend(body.usdEstimate, prefs.maxOnchainUsd ?? prefs.maxSpend);
   }
 
-  const res = await fetch(`${gatewayUrl}/api/execute`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-payment": body.xPayment,
-    },
-    body: JSON.stringify({ tx, wallet: body.wallet, network: networkKey, usdEstimate: body.usdEstimate }),
-  });
+  try {
+    const res = await fetch(`${gatewayUrl}/api/execute`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-payment": body.xPayment,
+      },
+      body: JSON.stringify({ tx, wallet: body.wallet, network: networkKey, usdEstimate: body.usdEstimate }),
+    });
 
-  const payload = await res.json();
-  return NextResponse.json(payload, { status: res.status });
+    const payload = await res.json().catch(() => ({}));
+    return NextResponse.json(payload, { status: res.status });
+  } catch (err) {
+    return NextResponse.json({ error: `Gateway error: ${(err as Error).message}` }, { status: 502 });
+  }
 }
