@@ -29,8 +29,8 @@ python agent.py
 
 ## If Agentverse says “Agent Not Found”
 1) With the agent running, verify it’s reachable locally:
-   - `curl http://127.0.0.1:8001/.well-known/agent.json` should return manifest JSON.
-   - If curl fails, check firewall/VPN and confirm you’re running on the same machine/port.
+   - `curl http://127.0.0.1:8001/.well-known/agent.json` should return a JSON block with name/address/endpoints.
+   - If curl fails, check firewall/VPN and confirm you’re running on the same machine/port and that `endpoint=["http://127.0.0.1:8001/submit"]` is set in `agent.py`.
 2) Open the inspector link printed in logs (https://agentverse.ai/inspect/?uri=http%3A//127.0.0.1%3A8001&address=agent1...).
 3) If still not found, try another browser/incognito and ensure the URL uses `127.0.0.1:8001`.
 

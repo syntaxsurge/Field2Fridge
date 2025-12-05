@@ -105,12 +105,29 @@ class CartDecisionResponse(Model):
     message: str
 
 
+class AgentInfo(Model):
+    name: str
+    address: str
+    endpoint: list[str]
+    protocols: list[str]
+
+
 @agent.on_rest_post("/cart_decision", CartDecisionRequest, CartDecisionResponse)
 async def rest_cart_decision(ctx: Context, req: CartDecisionRequest) -> CartDecisionResponse:
     ctx.logger.info(
         f"REST cart_decision from {req.wallet}: {req.status} {req.vendor} ${req.total_usd}"
     )
     return CartDecisionResponse(ok=True, message="Recorded by Field2FridgeASI")
+
+
+@agent.on_rest_get("/.well-known/agent.json", AgentInfo)
+async def rest_agent_info(_: Context) -> AgentInfo:
+    return AgentInfo(
+        name=agent.name,
+        address=str(agent.address),
+        endpoint=agent.endpoints,
+        protocols=["AgentChatProtocol"],
+    )
 
 
 if __name__ == "__main__":
