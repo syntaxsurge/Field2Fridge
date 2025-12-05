@@ -306,7 +306,6 @@ export default function CopilotPage() {
                     {status ?? "Ask"}
                   </Button>
                   {error && <p className="text-sm text-destructive">{error}</p>}
-                  {!error && status && <p className="text-sm text-muted-foreground">{status}</p>}
                 </div>
               </div>
 
