@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "../theme-toggle";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -44,6 +45,7 @@ export function SiteHeader() {
             <Button asChild variant="ghost" size="sm" className="md:hidden">
               <Link href="/dashboard">Dashboard</Link>
             </Button>
+            <ThemeToggle />
             <ConnectButton accountStatus="avatar" showBalance={false} />
           </div>
         </nav>

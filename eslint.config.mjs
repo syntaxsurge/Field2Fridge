@@ -12,6 +12,6 @@ export default defineConfig([
   ...compat.extends("next/core-web-vitals"),
   ...compat.extends("next/typescript"),
   {
-    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", "scripts/**"],
+    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", "scripts/**", "convex/_generated/**"],
   },
 ]);
