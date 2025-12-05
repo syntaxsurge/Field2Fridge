@@ -27,11 +27,15 @@ python agent.py
 
 # Useful logs: agent address, Almanac/Agentverse registration, inspector URL.
 
-## Connect Mailbox via Agentverse (fixes 401s)
-1) Keep `python agent.py` running.
-2) Copy the inspector URL printed in logs (looks like https://agentverse.ai/inspect/?uri=...&address=agent1...).
-3) Open it in your browser, click **Connect**, choose **Mailbox**, and approve.
-4) Back in the terminal you should see “Mailbox access token acquired” and 401 errors stop. The Local Agent Inspector will also stop showing “Could not find this agent”.
+## If Agentverse says “Agent Not Found”
+1) With the agent running, verify it’s reachable locally:
+   - `curl http://127.0.0.1:8001/.well-known/agent.json` should return manifest JSON.
+   - If curl fails, check firewall/VPN and confirm you’re running on the same machine/port.
+2) Open the inspector link printed in logs (https://agentverse.ai/inspect/?uri=http%3A//127.0.0.1%3A8001&address=agent1...).
+3) If still not found, try another browser/incognito and ensure the URL uses `127.0.0.1:8001`.
+
+## Optional: Mailbox mode
+This agent is configured for a direct local endpoint (`endpoint=[http://127.0.0.1:8001/submit]`). If you want Agentverse-hosted Mailbox instead, remove the `endpoint` argument in `agent.py`, set `mailbox=True`, restart, open the inspector link, and click **Connect → Mailbox**. Then you should see “Mailbox access token acquired” in logs.
 ```
 
 When running, you should see logs about Almanac/Agentverse registration and an inspector URL you can open in the browser.

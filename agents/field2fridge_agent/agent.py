@@ -30,9 +30,8 @@ agent = Agent(
     seed=os.getenv("AGENT_SEED_PHRASE", "field2fridge-seedphrase"),
     port=8001,
     endpoint=["http://127.0.0.1:8001/submit"],
-    mailbox=True,
-    publish_agent_details=True,
     network="testnet",
+    publish_agent_details=True,
 )
 
 protocol = Protocol(spec=chat_protocol_spec)
