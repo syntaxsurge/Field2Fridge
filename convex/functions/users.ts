@@ -1,11 +1,24 @@
 import {
   GenericMutationCtx,
+  GenericQueryCtx,
   mutationGeneric,
+  queryGeneric,
   type GenericDataModel,
 } from "convex/server";
 import { GenericId, v } from "convex/values";
 
 type MutationCtx = GenericMutationCtx<GenericDataModel>;
+type QueryCtx = GenericQueryCtx<GenericDataModel>;
+
+export const getUserByWallet = queryGeneric({
+  args: { wallet: v.string() },
+  handler: async (ctx: QueryCtx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_wallet", (q) => q.eq("wallet", args.wallet))
+      .unique();
+  },
+});
 
 export const createOrUpdateUser = mutationGeneric({
   args: {
