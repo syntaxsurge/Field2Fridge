@@ -10,6 +10,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useState } from "react";
+import { WorkspaceShortcuts } from "@/components/layout/workspace-shortcuts";
 
 export default function FieldsPage() {
   const { user, isConnected, convexConfigured } = useCurrentUser();
@@ -106,6 +107,16 @@ export default function FieldsPage() {
           Use open agroclimate data (NASA POWER) to stress-test varieties and forecast yields per field.
         </p>
       </div>
+
+      <WorkspaceShortcuts
+        links={[
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/farmer/fields", label: "Fields" },
+          { href: "/household/pantry", label: "Household" },
+          { href: "/copilot", label: "Copilot" },
+          { href: "/settings", label: "Settings" },
+        ]}
+      />
 
       <Card>
         <CardHeader>

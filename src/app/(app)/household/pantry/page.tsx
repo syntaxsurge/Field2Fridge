@@ -20,6 +20,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMemo, useState, type JSX } from "react";
 import { AlertTriangle, CheckCircle2, Eye } from "lucide-react";
+import { WorkspaceShortcuts } from "@/components/layout/workspace-shortcuts";
 
 const UNIT_OPTIONS = ["pcs", "kg", "g", "L", "mL", "packs", "bottles"];
 
@@ -179,6 +180,17 @@ export default function PantryPage() {
           </p>
         </div>
       </div>
+
+      <WorkspaceShortcuts
+        links={[
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/household/pantry", label: "Pantry" },
+          { href: "/household/cart", label: "Cart" },
+          { href: "/household/controls", label: "Safety" },
+          { href: "/copilot", label: "Copilot" },
+          { href: "/farmer/fields", label: "Farmer fields" },
+        ]}
+      />
 
       <HouseholdNavTabs />
 

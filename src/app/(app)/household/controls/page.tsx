@@ -12,6 +12,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
+import { WorkspaceShortcuts } from "@/components/layout/workspace-shortcuts";
 
 type ControlsState = {
   weeklyBudget: number;
@@ -135,6 +136,17 @@ export default function ControlsPage() {
         </p>
         {toastMessage && <p className="text-sm text-emerald-600">{toastMessage}</p>}
       </div>
+
+      <WorkspaceShortcuts
+        links={[
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/household/pantry", label: "Pantry" },
+          { href: "/household/cart", label: "Cart" },
+          { href: "/household/controls", label: "Safety" },
+          { href: "/copilot", label: "Copilot" },
+          { href: "/farmer/fields", label: "Farmer fields" },
+        ]}
+      />
 
       <HouseholdNavTabs />
 

@@ -12,6 +12,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { recordAgentWebhook } from "@/lib/api/cart-agent";
+import { WorkspaceShortcuts } from "@/components/layout/workspace-shortcuts";
 
 export default function CartPage() {
   const { user, isConnected, convexConfigured, isLoadingUser } = useCurrentUser();
@@ -169,6 +170,17 @@ export default function CartPage() {
           </p>
         )}
       </div>
+
+      <WorkspaceShortcuts
+        links={[
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/household/pantry", label: "Pantry" },
+          { href: "/household/cart", label: "Cart" },
+          { href: "/household/controls", label: "Safety" },
+          { href: "/copilot", label: "Copilot" },
+          { href: "/farmer/fields", label: "Farmer fields" },
+        ]}
+      />
 
       <HouseholdNavTabs />
 

@@ -82,6 +82,7 @@ export default function DashboardPage() {
       : null;
   const registryAddress = CONTRACT_ADDRESSES.bscTestnet.Field2FridgeAgentRegistry;
   const serviceTokenAddress = CONTRACT_ADDRESSES.bscTestnet.Field2FridgeServiceToken;
+  const workspaceHref = user?.role === "farmer" ? "/farmer/fields" : "/household/pantry";
 
   const shorten = (val: string) => (val.length > 12 ? `${val.slice(0, 6)}…${val.slice(-4)}` : val);
   const explorerBase = "https://testnet.bscscan.com/address/";
@@ -141,7 +142,10 @@ export default function DashboardPage() {
             <Link href="/settings">Safety settings</Link>
           </Button>
           <Button asChild>
-            <Link href={`/household/pantry`}>Open workspace</Link>
+            <Link href={workspaceHref}>Open workspace</Link>
+          </Button>
+          <Button variant="secondary" asChild>
+            <Link href="/copilot">Copilot</Link>
           </Button>
         </div>
       </header>

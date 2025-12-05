@@ -15,6 +15,10 @@ export function SiteHeader() {
   const navItems = [
     { href: "/", label: "Home" },
     { href: "/dashboard", label: "Dashboard" },
+    { href: "/household/pantry", label: "Household" },
+    { href: "/farmer/fields", label: "Farmer" },
+    { href: "/copilot", label: "Copilot" },
+    { href: "/settings", label: "Settings" },
     ...(!isConnected || (convexConfigured && !user)
       ? [{ href: "/sign-in", label: isConnected ? "Finish onboarding" : "Sign in" }]
       : []),
@@ -42,7 +46,7 @@ export function SiteHeader() {
                   href={item.href}
                   className={cn(
                     "rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground",
-                    pathname === item.href && "bg-muted text-foreground"
+                    pathname.startsWith(item.href) && "bg-muted text-foreground"
                   )}
                 >
                   {item.label}
