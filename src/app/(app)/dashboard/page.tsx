@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useQuery } from "convex/react";
 import {
@@ -22,7 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts/addresses";
 
 export default function DashboardPage() {
@@ -30,9 +29,8 @@ export default function DashboardPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const urlRole = searchParams.get("role");
-  const [activeTab, setActiveTab] = useState<"household" | "farmer">(
-    urlRole === "farmer" ? "farmer" : "household"
-  );
+  const role: "household" | "farmer" =
+    user?.role === "farmer" || urlRole === "farmer" ? "farmer" : "household";
 
   const householdOverview = useQuery(
     api.functions.household.overview,
@@ -54,12 +52,6 @@ export default function DashboardPage() {
       router.replace("/sign-in");
     }
   }, [convexConfigured, isConnected, isLoadingUser, router, user]);
-
-  useEffect(() => {
-    if (user?.role === "household" || user?.role === "farmer") {
-      setActiveTab(user.role as "household" | "farmer");
-    }
-  }, [user]);
 
   const statusCopy = useMemo(() => {
     if (!isConnected) return "Connect your wallet to view your agents.";
@@ -150,13 +142,97 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "household" | "farmer")} className="w-full">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="household">Household</TabsTrigger>
-          <TabsTrigger value="farmer">Farmer</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="household" className="space-y-6 pt-6">
+      {role === "farmer" ? (
+        <div className="space-y-6 pt-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">Yield outlook</CardTitle>
+                <CardDescription>Last agroclimate simulation (NASA POWER).</CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-semibold">
+                    {latestSimulation === undefined
+                      ? "…"
+                      : latestYield ?? "No runs"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {latestSimulation === undefined
+                      ? "Loading"
+                      : latestYield
+                        ? `${latestVariety ?? "Unknown"} — ${latestRegion ?? "Unknown"}${
+                            latestRisk ? ` · Risk ${latestRisk}` : ""
+                          }`
+                        : "Run a simulation to populate"}
+                  </p>
+                </div>
+                <Leaf className="h-10 w-10 text-primary" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">Agent activity</CardTitle>
+                <CardDescription>Recent audit trail entries.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-semibold">
+                    {auditEvents === undefined ? "…" : `${auditEvents.length} event${auditEvents.length === 1 ? "" : "s"}`}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {auditEvents === undefined ? "Loading logs" : "Wallet-scoped events in Convex"}
+                  </p>
+                </div>
+                <Activity className="h-10 w-10 text-primary" />
+              </CardContent>
+            </Card>
+            <Card className="h-full">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">Registry &amp; token</CardTitle>
+                <CardDescription>BNB testnet addresses</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                <p className="text-muted-foreground">
+                  Agent registry:{" "}
+                  <Link href={`${explorerBase}${registryAddress}`} className="font-mono text-primary underline-offset-4 hover:underline">
+                    {shorten(registryAddress)}
+                  </Link>
+                </p>
+                <p className="text-muted-foreground">
+                  Service token:{" "}
+                  <Link href={`${explorerBase}${serviceTokenAddress}`} className="font-mono text-primary underline-offset-4 hover:underline">
+                    {shorten(serviceTokenAddress)}
+                  </Link>
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Next actions</CardTitle>
+              <CardDescription>
+                Queue up the next agroclimate simulation and review guardrails.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-3">
+              <Button variant="outline" asChild className="gap-2">
+                <Link href="/farmer/fields">
+                  Run climate simulation
+                  <Leaf className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild className="gap-2">
+                <Link href="/settings">
+                  Review guardrails
+                  <CreditCard className="h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="space-y-6 pt-6">
           <div className="grid gap-4 md:grid-cols-4">
             <Link href="/household/pantry" className="block">
               <Card className="h-full transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-sm">
@@ -305,77 +381,8 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </Link>
-        </TabsContent>
-
-        <TabsContent value="farmer" className="space-y-6 pt-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">Yield outlook</CardTitle>
-                <CardDescription>Last agroclimate simulation (NASA POWER).</CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-semibold">
-                    {latestSimulation === undefined
-                      ? "…"
-                      : latestYield ?? "No runs"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {latestSimulation === undefined
-                      ? "Loading"
-                      : latestYield
-                        ? `${latestVariety ?? "Unknown"} — ${latestRegion ?? "Unknown"}${
-                            latestRisk ? ` · Risk ${latestRisk}` : ""
-                          }`
-                        : "Run a simulation to populate"}
-                  </p>
-                </div>
-                <Leaf className="h-10 w-10 text-primary" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">Agent activity</CardTitle>
-                <CardDescription>Recent audit trail entries.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-semibold">
-                    {auditEvents === undefined ? "…" : `${auditEvents.length} event${auditEvents.length === 1 ? "" : "s"}`}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {auditEvents === undefined ? "Loading logs" : "Wallet-scoped events in Convex"}
-                  </p>
-                </div>
-                <Activity className="h-10 w-10 text-primary" />
-              </CardContent>
-            </Card>
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Next actions</CardTitle>
-              <CardDescription>
-                Queue up the next agroclimate simulation and review guardrails.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-3">
-              <Button variant="outline" asChild className="gap-2">
-                <Link href="/farmer/fields">
-                  Run climate simulation
-                  <Leaf className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild className="gap-2">
-                <Link href="/settings">
-                  Review guardrails
-                  <CreditCard className="h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </main>
   );
 }
