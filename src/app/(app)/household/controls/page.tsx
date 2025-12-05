@@ -23,7 +23,7 @@ type ControlsState = {
 const defaultControls: ControlsState = {
   weeklyBudget: 80,
   perOrderCap: 60,
-  vendors: { "Local Co-op": true, Amazon: true, Walmart: true },
+  vendors: { Amazon: true, Walmart: true },
   approvalMode: "ask",
 };
 
@@ -43,7 +43,6 @@ export default function ControlsPage() {
   useEffect(() => {
     if (settings) {
       const mergedVendors = {
-        "Local Co-op": true,
         Amazon: true,
         Walmart: true,
         ...settings.vendors,

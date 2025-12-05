@@ -27,6 +27,14 @@ export default function CartPage() {
   const vendor = cartData?.vendor ?? null;
   const lastEvent = events && events.length > 0 ? events[0] : null;
   const lastStatus = lastEvent?.fulfillmentStatus;
+  const renderStatus = (status?: string | null) => {
+    if (!status) return "simulated";
+    if (status === "pending") return "pending (live provider)";
+    if (status === "simulated") return "simulated";
+    if (status === "fulfilled") return "fulfilled";
+    if (status === "declined") return "declined";
+    return status;
+  };
 
   const approve = async (cart: CartSuggestion[]) => {
     if (!user) {
@@ -231,7 +239,7 @@ export default function CartPage() {
                 )}
                 {lastStatus && (
                   <p className="text-xs text-muted-foreground">
-                    Last cart status: {String(lastStatus)}{" "}
+                    Last cart status: {renderStatus(lastStatus)}{" "}
                     {lastEvent?.vendor ? `(vendor: ${lastEvent.vendor as string})` : ""}
                   </p>
                 )}
@@ -274,9 +282,12 @@ export default function CartPage() {
                   {entry.vendor && (
                     <p className="text-xs text-muted-foreground">Vendor: {String(entry.vendor)}</p>
                   )}
-                  {entry.fulfillmentStatus && (
-                    <p className="text-xs text-muted-foreground">Status: {String(entry.fulfillmentStatus)}</p>
-                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Status: {renderStatus(entry.fulfillmentStatus as string | undefined)}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wide text-amber-500">
+                    High-fidelity simulation mode (no live Amazon/Walmart API)
+                  </p>
                   <p className="text-muted-foreground">
                     {items.length} items — ${total.toFixed(2)}
                   </p>

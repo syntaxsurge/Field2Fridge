@@ -3,8 +3,7 @@ export const DEFAULT_HOUSEHOLD_SETTINGS = {
   perOrderCap: 60,
   approvalMode: "ask" as const,
   vendors: {
-    "Local Co-op": true,
     Amazon: true,
-    Walmart: false,
+    Walmart: true,
   },
 };

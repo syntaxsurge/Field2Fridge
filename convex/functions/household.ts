@@ -243,7 +243,7 @@ export const recordCartDecision = mutationGeneric({
       userId: args.userId,
       decision: args.decision,
       vendor: args.vendor ?? null,
-      fulfillmentStatus: args.decision === "approved" ? "pending" : "declined",
+      fulfillmentStatus: args.decision === "approved" ? "simulated" : "declined",
       items: args.cart,
       total,
       createdAt: Date.now(),
@@ -252,7 +252,13 @@ export const recordCartDecision = mutationGeneric({
     await ctx.db.insert("audit_logs", {
       userId: args.userId,
       type: "cart_decision",
-      payload: { decision: args.decision, total, count: args.cart.length },
+      payload: {
+        decision: args.decision,
+        total,
+        count: args.cart.length,
+        mode: "simulation",
+        vendor: args.vendor ?? null,
+      },
       createdAt: Date.now(),
     });
   },
