@@ -27,7 +27,8 @@ export default function CartPage() {
   const [error, setError] = useState<string>();
   const vendor = cartData?.vendor ?? null;
   const lastEvent = events && events.length > 0 ? events[0] : null;
-  const lastStatus = lastEvent?.fulfillmentStatus;
+  const lastStatusValue = lastEvent?.fulfillmentStatus;
+  const lastStatus = typeof lastStatusValue === "string" ? lastStatusValue : null;
   const renderStatus = (status?: string | null) => {
     if (!status) return "simulated";
     if (status === "pending") return "pending (live provider)";

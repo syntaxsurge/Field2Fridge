@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const DEFAULT_BASE = "https://api.chaingpt.org";
+import { callChainGptChat } from "@/lib/api/chaingpt";
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.CHAINGPT_API_KEY;
-  const baseUrl = process.env.CHAINGPT_BASE_URL ?? DEFAULT_BASE;
-
-  if (!apiKey) {
-    return NextResponse.json({ error: "CHAINGPT_API_KEY is not configured." }, { status: 500 });
-  }
-
   const { source, contractAddress, chainId } = (await req.json()) as {
     source?: string;
     contractAddress?: string;
@@ -23,39 +15,45 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const payload: Record<string, unknown> = {
-    model: "smart_contract_auditor",
-  };
-
-  if (source) {
-    payload.code = source;
-  }
+  const targetChain = chainId ?? 97;
+  const prompt: string[] = [
+    "Run a smart contract security audit. Provide vulnerabilities, risks, and remediation steps.",
+    `Network chainId: ${targetChain}`,
+  ];
 
   if (contractAddress) {
-    payload.contractAddress = contractAddress;
+    prompt.push(`Contract address: ${contractAddress}`);
+  }
+  if (source) {
+    prompt.push(`Solidity source:\n${source}`);
   }
 
-  if (chainId) {
-    payload.chainId = chainId;
+  try {
+    const { res, raw, parsed } = await callChainGptChat({
+      model: "smart_contract_auditor",
+      question: prompt.join("\n\n"),
+      chatHistory: "off",
+    });
+
+    const json = parsed.json;
+    if (!res.ok) {
+      const message = json?.message ?? parsed.text ?? `ChainGPT audit error ${res.status}`;
+      console.error("ChainGPT audit error payload:", raw);
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
+
+    if (json && json.status === false) {
+      const message = json.message ?? "ChainGPT audit request failed";
+      console.error("ChainGPT audit returned status=false:", raw);
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
+
+    const report = json?.data?.report ?? json?.data?.bot ?? parsed.text ?? "No report returned";
+    const risk = json?.data?.risk ?? "unknown";
+
+    return NextResponse.json({ report, risk });
+  } catch (err) {
+    console.error("ChainGPT audit call failed:", err);
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
-
-  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/audit/stream`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    return NextResponse.json({ error: `ChainGPT audit error ${res.status}: ${text}` }, { status: 502 });
-  }
-
-  const data = (await res.json()) as { data?: { report?: string; risk?: string } };
-  return NextResponse.json({
-    report: data.data?.report ?? "No report returned",
-    risk: data.data?.risk ?? "unknown",
-  });
 }

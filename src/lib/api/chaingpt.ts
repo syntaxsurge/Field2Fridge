@@ -1,41 +1,64 @@
-const BASE_URL = process.env.CHAINGPT_BASE_URL || "https://api.chaingpt.org";
+const BASE_URL = (process.env.CHAINGPT_BASE_URL ?? "https://api.chaingpt.org").replace(/\/$/, "");
 const API_KEY = process.env.CHAINGPT_API_KEY;
 
-type ChainGptAuditResponse = {
-  status: string;
-  result?: string;
-  error?: string;
+export type ChainGptResponse = {
+  status?: boolean;
+  message?: string;
+  data?: {
+    bot?: string;
+    report?: string;
+    risk?: string;
+  };
 };
 
-type ChainGptExplainResponse = {
-  status: string;
-  answer?: string;
-  error?: string;
+export type ParsedChainGpt = {
+  json?: ChainGptResponse;
+  text?: string;
 };
 
-async function chaingptFetch<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  if (!API_KEY) {
-    throw new Error("Missing CHAINGPT_API_KEY");
+export function parseChainGptResponse(raw: string): ParsedChainGpt {
+  try {
+    return { json: JSON.parse(raw) as ChainGptResponse };
+  } catch {
+    // fall through to attempt SSE-style parsing
   }
-  const res = await fetch(`${BASE_URL}${path}`, {
+
+  const lines = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i];
+    if (!line.startsWith("data:")) continue;
+    const candidate = line.slice("data:".length).trim();
+    if (!candidate) continue;
+    try {
+      return { json: JSON.parse(candidate) as ChainGptResponse };
+    } catch {
+      // keep scanning earlier lines
+    }
+  }
+
+  return { text: raw.trim() };
+}
+
+export async function callChainGptChat(payload: Record<string, unknown>) {
+  if (!API_KEY) {
+    throw new Error("CHAINGPT_API_KEY is not configured");
+  }
+
+  const res = await fetch(`${BASE_URL}/chat/stream`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
       Authorization: `Bearer ${API_KEY}`,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`ChainGPT error ${res.status}: ${text}`);
-  }
-  return (await res.json()) as T;
-}
 
-export async function auditContract(source: string) {
-  return chaingptFetch<ChainGptAuditResponse>("/audit/contract", { source });
-}
+  const raw = await res.text();
+  const parsed = parseChainGptResponse(raw);
 
-export async function explainProtocol(query: string, network = "bsc-testnet") {
-  return chaingptFetch<ChainGptExplainResponse>("/web3/explain", { query, network });
+  return { res, raw, parsed };
 }
