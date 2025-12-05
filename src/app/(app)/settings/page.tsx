@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useCurrentUser, UserPrefs } from "@/hooks/use-current-user";
+import { api } from "../../../../convex/_generated/api";
+import { useMutation } from "convex/react";
 
 type SettingsState = {
   network: "testnet" | "mainnet";
@@ -24,12 +27,76 @@ const defaults: SettingsState = {
 };
 
 export default function SettingsPage() {
+  const { user, isConnected, convexConfigured, isLoadingUser } = useCurrentUser();
   const [state, setState] = useState<SettingsState>(defaults);
   const [saved, setSaved] = useState<string>();
+  const [error, setError] = useState<string>();
+  const updatePrefs = useMutation(api.functions.users.updatePrefs);
+
+  useEffect(() => {
+    if (user?.prefs) {
+      const prefs = user.prefs as UserPrefs;
+      setState({
+        network: prefs.network,
+        txWarnings: prefs.txWarnings,
+        allowDenyLists: prefs.allowDenyLists,
+        telemetry: prefs.telemetry,
+        maxSpend: prefs.maxSpend,
+      });
+    }
+  }, [user]);
 
   const save = () => {
-    setSaved(`Saved at ${new Date().toLocaleTimeString()}`);
+    if (!user) {
+      setError("Connect your wallet and finish onboarding to save settings.");
+      return;
+    }
+    setError(undefined);
+    setSaved("Saving…");
+    updatePrefs({
+      userId: user._id,
+      prefs: {
+        network: state.network,
+        txWarnings: state.txWarnings,
+        allowDenyLists: state.allowDenyLists,
+        telemetry: state.telemetry,
+        maxSpend: state.maxSpend,
+      },
+    })
+      .then(() => setSaved(`Saved at ${new Date().toLocaleTimeString()}`))
+      .catch((err) => {
+        setSaved(undefined);
+        setError((err as Error).message);
+      });
   };
+
+  if (!convexConfigured) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 pb-16 pt-12 md:px-10">
+        <div className="space-y-2">
+          <Badge className="w-fit">Settings</Badge>
+          <h1 className="text-3xl font-semibold md:text-4xl">Safety &amp; environment</h1>
+          <p className="text-muted-foreground">
+            Configure <code>NEXT_PUBLIC_CONVEX_URL</code> to persist settings per wallet.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!isConnected || !user) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 pb-16 pt-12 md:px-10">
+        <div className="space-y-2">
+          <Badge className="w-fit">Settings</Badge>
+          <h1 className="text-3xl font-semibold md:text-4xl">Safety &amp; environment</h1>
+          <p className="text-muted-foreground">
+            Connect your wallet to load your saved network, spend, and telemetry preferences.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-6 pb-16 pt-12 md:px-10">
@@ -126,8 +193,11 @@ export default function SettingsPage() {
             />
           </label>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={save}>Save</Button>
+            <Button onClick={save} disabled={isLoadingUser}>
+              Save
+            </Button>
             {saved && <p className="text-sm text-muted-foreground">{saved}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         </CardContent>
       </Card>

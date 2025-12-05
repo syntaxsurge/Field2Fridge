@@ -1,7 +1,3 @@
-const SPACEAGRI_BASE_URL =
-  process.env.SPACEAGRI_BASE_URL || "https://api.spaceagri.example";
-const SPACEAGRI_API_KEY = process.env.SPACEAGRI_API_KEY;
-
 export type SpaceAgriSimulation = {
   variety: string;
   expectedYieldTPerHa: number;
@@ -9,34 +5,26 @@ export type SpaceAgriSimulation = {
   notes?: string;
 };
 
-const fallbackSimulations: SpaceAgriSimulation[] = [
-  { variety: "X123", expectedYieldTPerHa: 4.2, traitScore: 82, notes: "Balanced drought resistance and yield." },
-  { variety: "Y210", expectedYieldTPerHa: 3.9, traitScore: 78, notes: "Higher resilience, slightly lower yield." },
-];
-
-export async function runSimulation(params: {
+export type SpaceAgriSimulationRequest = {
   crop: string;
   region: string;
   fieldSizeHa: number;
-}) {
-  if (!SPACEAGRI_API_KEY) {
-    return fallbackSimulations;
-  }
+};
 
-  const res = await fetch(`${SPACEAGRI_BASE_URL}/v1/simulate`, {
+export async function runSimulation(params: SpaceAgriSimulationRequest) {
+  const res = await fetch("/api/spaceagri/simulate", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": SPACEAGRI_API_KEY,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
   });
 
+  const payload = (await res.json().catch(() => null)) as
+    | { simulations: SpaceAgriSimulation[]; error?: string }
+    | null;
+
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`SpaceAgri error ${res.status}: ${text}`);
+    throw new Error(payload?.error ?? `SpaceAgri error ${res.status}`);
   }
 
-  const data = (await res.json()) as SpaceAgriSimulation[];
-  return data;
+  return payload?.simulations ?? [];
 }

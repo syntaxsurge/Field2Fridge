@@ -1,5 +1,6 @@
 "use client";
 
+import { api } from "../../../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useQuery } from "convex/react";
 import {
   Activity,
   CreditCard,
@@ -30,6 +32,19 @@ export default function DashboardPage() {
   const urlRole = searchParams.get("role");
   const [activeTab, setActiveTab] = useState<"household" | "farmer">(
     urlRole === "farmer" ? "farmer" : "household"
+  );
+
+  const householdOverview = useQuery(
+    api.functions.household.overview,
+    user ? { userId: user._id } : "skip"
+  );
+  const latestSimulation = useQuery(
+    api.functions.farmer.latestSimulation,
+    user ? { userId: user._id } : "skip"
+  );
+  const auditEvents = useQuery(
+    api.functions.audit.listAuditEvents,
+    user ? { userId: user._id, limit: 5 } : "skip"
   );
 
   useEffect(() => {
@@ -52,6 +67,29 @@ export default function DashboardPage() {
     if (convexConfigured && !user) return "No profile found. Finish onboarding first.";
     return null;
   }, [convexConfigured, isConnected, isLoadingUser, user]);
+
+  const riskyNames = householdOverview?.riskyNames ?? [];
+  const upcomingCart = householdOverview?.upcomingCart;
+  const latestYield =
+    latestSimulation && typeof latestSimulation.expectedYieldTPerHa === "number"
+      ? `${latestSimulation.expectedYieldTPerHa.toFixed(2)} t/ha`
+      : null;
+  const latestVariety = latestSimulation?.variety ?? null;
+  const latestRegion = latestSimulation?.region ?? null;
+
+  if (!convexConfigured) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 pb-16 pt-20 md:px-10">
+        <header className="space-y-3">
+          <Badge className="w-fit">Control center</Badge>
+          <h1 className="text-3xl font-semibold md:text-4xl">Ops snapshot for your agents</h1>
+          <p className="text-muted-foreground">
+            Configure <code>NEXT_PUBLIC_CONVEX_URL</code> to load household and farmer data.
+          </p>
+        </header>
+      </main>
+    );
+  }
 
   if (statusCopy) {
     return (
@@ -86,7 +124,7 @@ export default function DashboardPage() {
             glance. Real data streams in once you connect your wallet.
           </p>
           <p className="text-sm text-muted-foreground">
-            Signed in as {user?.role ?? "wallet user"} — {address}
+            Signed in as {user?.role ?? "wallet user"} — {address ?? "No address"}
           </p>
         </div>
         <div className="flex gap-3">
@@ -114,8 +152,18 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-semibold">3 items</p>
-                  <p className="text-sm text-muted-foreground">Milk, eggs, rice</p>
+                  <p className="text-3xl font-semibold">
+                    {householdOverview === undefined
+                      ? "…"
+                      : `${householdOverview.riskyCount} item${householdOverview.riskyCount === 1 ? "" : "s"}`}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {householdOverview === undefined
+                      ? "Computing risk…"
+                      : riskyNames.length > 0
+                        ? riskyNames.join(", ")
+                        : "No items at risk"}
+                  </p>
                 </div>
                 <ShoppingBag className="h-10 w-10 text-primary" />
               </CardContent>
@@ -123,12 +171,22 @@ export default function DashboardPage() {
             <Card>
               <CardHeader className="space-y-1">
                 <CardTitle className="text-lg">Spend guardrails</CardTitle>
-                <CardDescription>Weekly budget vs projected carts.</CardDescription>
+                <CardDescription>Weekly budget vs approved carts.</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-semibold">$54 / $80</p>
-                  <p className="text-sm text-muted-foreground">On track this week</p>
+                  <p className="text-3xl font-semibold">
+                    {householdOverview === undefined
+                      ? "…"
+                      : `$${householdOverview.spentThisWeek.toFixed(2)} / $${householdOverview.weeklyBudget.toFixed(2)}`}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {householdOverview === undefined
+                      ? "Loading"
+                      : householdOverview.spentThisWeek > householdOverview.weeklyBudget
+                        ? "Over weekly budget"
+                        : "Tracking approved spend"}
+                  </p>
                 </div>
                 <CreditCard className="h-10 w-10 text-primary" />
               </CardContent>
@@ -140,8 +198,18 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-semibold">Locked in</p>
-                  <p className="text-sm text-muted-foreground">Ready for x402 flows</p>
+                  <p className="text-3xl font-semibold">
+                    {householdOverview === undefined
+                      ? "…"
+                      : householdOverview.approvalMode === "auto"
+                        ? `Auto < $${householdOverview.perOrderCap.toFixed(0)}`
+                        : "Manual approvals"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {householdOverview === undefined
+                      ? "Loading"
+                      : `${Object.values(householdOverview.vendors).filter(Boolean).length} vendors allowed`}
+                  </p>
                 </div>
                 <Lock className="h-10 w-10 text-primary" />
               </CardContent>
@@ -155,18 +223,34 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 text-sm md:grid-cols-3">
-              <div className="rounded-lg border bg-muted/50 p-3">
-                <p className="font-medium">Vendor</p>
-                <p className="text-muted-foreground">Amazon sandbox</p>
-              </div>
-              <div className="rounded-lg border bg-muted/50 p-3">
-                <p className="font-medium">Est. total</p>
-                <p className="text-muted-foreground">$47.20</p>
-              </div>
-              <div className="rounded-lg border bg-muted/50 p-3">
-                <p className="font-medium">Approval window</p>
-                <p className="text-muted-foreground">Auto-approve under $60</p>
-              </div>
+              {householdOverview === undefined && (
+                <p className="text-muted-foreground">Loading upcoming cart…</p>
+              )}
+              {householdOverview && !upcomingCart && (
+                <p className="text-muted-foreground">
+                  No cart generated yet. Add pantry items and enable vendors to create a suggestion.
+                </p>
+              )}
+              {upcomingCart && (
+                <>
+                  <div className="rounded-lg border bg-muted/50 p-3">
+                    <p className="font-medium">Vendor</p>
+                    <p className="text-muted-foreground">{upcomingCart.vendor ?? "None"}</p>
+                  </div>
+                  <div className="rounded-lg border bg-muted/50 p-3">
+                    <p className="font-medium">Est. total</p>
+                    <p className="text-muted-foreground">${upcomingCart.total.toFixed(2)}</p>
+                  </div>
+                  <div className="rounded-lg border bg-muted/50 p-3">
+                    <p className="font-medium">Approval window</p>
+                    <p className="text-muted-foreground">
+                      {upcomingCart.autoApproveUnder
+                        ? `Auto-approve under $${upcomingCart.autoApproveUnder.toFixed(0)}`
+                        : "Manual review required"}
+                    </p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -180,8 +264,18 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-semibold">4.2 t/ha</p>
-                  <p className="text-sm text-muted-foreground">Variety X123</p>
+                  <p className="text-3xl font-semibold">
+                    {latestSimulation === undefined
+                      ? "…"
+                      : latestYield ?? "No runs"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {latestSimulation === undefined
+                      ? "Loading"
+                      : latestYield
+                        ? `${latestVariety ?? "Unknown"} — ${latestRegion ?? "Unknown"}`
+                        : "Run a simulation to populate"}
+                  </p>
                 </div>
                 <Leaf className="h-10 w-10 text-primary" />
               </CardContent>
@@ -193,21 +287,25 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-semibold">Valid</p>
-                  <p className="text-sm text-muted-foreground">Shared with buyers</p>
+                  <p className="text-3xl font-semibold">Not submitted</p>
+                  <p className="text-sm text-muted-foreground">Generate a proof from the Midnight tab.</p>
                 </div>
                 <Sparkles className="h-10 w-10 text-primary" />
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">Agent health</CardTitle>
-                <CardDescription>ASI Agentverse heartbeat & logs.</CardDescription>
+                <CardTitle className="text-lg">Agent activity</CardTitle>
+                <CardDescription>Recent audit trail entries.</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-semibold">Live</p>
-                  <p className="text-sm text-muted-foreground">Last sync: 2 min ago</p>
+                  <p className="text-3xl font-semibold">
+                    {auditEvents === undefined ? "…" : `${auditEvents.length} event${auditEvents.length === 1 ? "" : "s"}`}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {auditEvents === undefined ? "Loading logs" : "Wallet-scoped events in Convex"}
+                  </p>
                 </div>
                 <Activity className="h-10 w-10 text-primary" />
               </CardContent>
@@ -217,7 +315,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Next actions</CardTitle>
               <CardDescription>
-                Queue up the next Midnight proof and x402 metered analytics call.
+                Queue up the next Midnight proof and SpaceAgri simulation.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
@@ -235,7 +333,7 @@ export default function DashboardPage() {
               </Button>
               <Button asChild className="gap-2">
                 <Link href="/settings">
-                  Trigger x402 premium call
+                  Review guardrails
                   <CreditCard className="h-4 w-4" />
                 </Link>
               </Button>

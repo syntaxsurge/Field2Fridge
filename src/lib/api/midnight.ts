@@ -1,7 +1,3 @@
-import crypto from "crypto";
-
-const MIDNIGHT_PROVER_URL = process.env.MIDNIGHT_PROVER_URL;
-
 type ProofResult = {
   proofId: string;
   commitment: string;
@@ -14,28 +10,21 @@ export async function generateSustainabilityProof(input: {
   threshold: number;
   metrics: Record<string, number>;
 }): Promise<ProofResult> {
-  // If a prover endpoint exists, call it; otherwise derive a deterministic mock commitment.
-  if (MIDNIGHT_PROVER_URL) {
-    const res = await fetch(MIDNIGHT_PROVER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Midnight prover error ${res.status}: ${text}`);
-    }
-    return (await res.json()) as ProofResult;
+  const res = await fetch("/api/midnight/proof", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  const payload = (await res.json().catch(() => null)) as ProofResult & { error?: string } | null;
+
+  if (!res.ok) {
+    throw new Error(payload?.error ?? `Midnight prover error ${res.status}`);
   }
 
-  const commitment = crypto
-    .createHash("sha256")
-    .update(JSON.stringify(input))
-    .digest("hex");
-
   return {
-    proofId: commitment.slice(0, 12),
-    commitment,
-    submittedAt: new Date().toISOString(),
+    proofId: payload!.proofId,
+    commitment: payload!.commitment,
+    submittedAt: payload!.submittedAt,
   };
 }

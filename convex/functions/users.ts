@@ -6,9 +6,28 @@ import {
   type GenericDataModel,
 } from "convex/server";
 import { GenericId, v } from "convex/values";
+import { DEFAULT_HOUSEHOLD_SETTINGS } from "./constants";
 
 type MutationCtx = GenericMutationCtx<GenericDataModel>;
 type QueryCtx = GenericQueryCtx<GenericDataModel>;
+
+async function ensureHouseholdSettings(
+  ctx: MutationCtx,
+  userId: GenericId<"users">,
+) {
+  const existingSettings = await ctx.db
+    .query("household_settings")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .first();
+
+  if (!existingSettings) {
+    await ctx.db.insert("household_settings", {
+      userId,
+      ...DEFAULT_HOUSEHOLD_SETTINGS,
+      updatedAt: Date.now(),
+    });
+  }
+}
 
 export const getUserByWallet = queryGeneric({
   args: { wallet: v.string() },
@@ -39,14 +58,37 @@ export const createOrUpdateUser = mutationGeneric({
         role: args.role,
         ...(args.prefs ? { prefs: args.prefs } : {}),
       });
+      if (args.role === "household") {
+        await ensureHouseholdSettings(ctx, existing._id as GenericId<"users">);
+      }
       return existing._id;
     }
 
-    return await ctx.db.insert("users", {
+    const id = await ctx.db.insert("users", {
       wallet: args.wallet,
       role: args.role,
       createdAt: now,
       ...(args.prefs ? { prefs: args.prefs } : {}),
     });
+    if (args.role === "household") {
+      await ensureHouseholdSettings(ctx, id as GenericId<"users">);
+    }
+    return id;
+  },
+});
+
+export const updatePrefs = mutationGeneric({
+  args: {
+    userId: v.id("users"),
+    prefs: v.object({
+      network: v.union(v.literal("testnet"), v.literal("mainnet")),
+      txWarnings: v.boolean(),
+      allowDenyLists: v.boolean(),
+      telemetry: v.boolean(),
+      maxSpend: v.number(),
+    }),
+  },
+  handler: async (ctx: MutationCtx, args) => {
+    await ctx.db.patch(args.userId as GenericId<"users">, { prefs: args.prefs });
   },
 });
