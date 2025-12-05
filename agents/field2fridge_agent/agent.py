@@ -20,6 +20,8 @@ SUBJECT_MATTER = os.getenv(
     "field-to-fridge supply chain, household carts and farmer climate risk",
 )
 
+AGENT_ENDPOINTS = ["http://127.0.0.1:8001/submit"]
+
 client = OpenAI(
     base_url="https://api.asi1.ai/v1",
     api_key=os.getenv("ASI1_API_KEY"),
@@ -29,7 +31,7 @@ agent = Agent(
     name="Field2FridgeASI",
     seed=os.getenv("AGENT_SEED_PHRASE", "field2fridge-seedphrase"),
     port=8001,
-    endpoint=["http://127.0.0.1:8001/submit"],
+    endpoint=AGENT_ENDPOINTS,
     network="testnet",
     publish_agent_details=True,
 )
@@ -125,7 +127,7 @@ async def rest_agent_info(_: Context) -> AgentInfo:
     return AgentInfo(
         name=agent.name,
         address=str(agent.address),
-        endpoint=agent.endpoints,
+        endpoint=AGENT_ENDPOINTS,
         protocols=["AgentChatProtocol"],
     )
 
