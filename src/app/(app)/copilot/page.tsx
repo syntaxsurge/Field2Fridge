@@ -203,6 +203,8 @@ export default function CopilotPage() {
       tx: { to: string; data: string };
     };
 
+    console.debug("[q402] paymentRequired", paymentJson.paymentRequired);
+
     if (!paymentJson.paymentRequired || !Array.isArray(paymentJson.paymentRequired.accepts)) {
       setExecuteError("Gateway did not return payment options.");
       setExecuteStatus(undefined);
@@ -212,6 +214,7 @@ export default function CopilotPage() {
     const details = selectPaymentDetails(paymentJson.paymentRequired, {
       network: network === "mainnet" ? "bsc-mainnet" : "bsc-testnet",
     });
+    console.debug("[q402] selected payment details", details);
     if (!details) {
       setExecuteError("Gateway did not provide payment details.");
       setExecuteStatus(undefined);
@@ -236,8 +239,11 @@ export default function CopilotPage() {
     const demoMode = process.env.NEXT_PUBLIC_Q402_DEMO_MODE === "true";
     let paymentHeader: string | undefined;
     try {
+      console.debug("[q402] signing payment header with walletClient", walletClient);
       paymentHeader = await createPaymentHeaderWithWallet(walletClient, details);
+      console.debug("[q402] signed payment header", paymentHeader);
     } catch (err) {
+      console.error("[q402] Failed to sign authorization tuple", err);
       if (demoMode) {
         // Fallback for wallets lacking EIP-7702 auth tuple signing; demo header is accepted server-side.
         paymentHeader = "demo-ok";
