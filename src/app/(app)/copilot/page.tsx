@@ -29,6 +29,8 @@ export default function CopilotPage() {
   const [auditSource, setAuditSource] = useState("");
   const [auditAddress, setAuditAddress] = useState("");
   const [auditResult, setAuditResult] = useState<string>();
+  const [auditStatus, setAuditStatus] = useState<string>();
+  const [auditError, setAuditError] = useState<string>();
   const [executeStatus, setExecuteStatus] = useState<string>();
   const [executeResult, setExecuteResult] = useState<string>();
   const [executeError, setExecuteError] = useState<string>();
@@ -103,6 +105,8 @@ export default function CopilotPage() {
       return;
     }
     setAuditResult(undefined);
+    setAuditError(undefined);
+    setAuditStatus("Running audit…");
     setExecuteError(undefined);
     const res = await fetch("/api/chaingpt/audit", {
       method: "POST",
@@ -113,9 +117,10 @@ export default function CopilotPage() {
         chainId: network === "mainnet" ? 56 : 97,
       }),
     });
+    setAuditStatus(undefined);
     const data = await res.json();
     if (!res.ok) {
-      setAuditResult(data.error ?? "Audit failed");
+      setAuditError(data.error ?? "Audit failed");
       return;
     }
     const report = data.report ?? "No report returned";
@@ -352,9 +357,18 @@ export default function CopilotPage() {
                 placeholder="0x..."
               />
               <div className="flex items-center gap-3">
-                <Button onClick={runAudit}>Run audit</Button>
-                {auditResult && <p className="text-sm text-muted-foreground">Audit ready</p>}
+                <Button onClick={runAudit} disabled={!!auditStatus}>
+                  {auditStatus ?? "Run audit"}
+                </Button>
+                {(auditResult || auditError) && (
+                  <p className="text-sm text-muted-foreground">
+                    {auditError ? "Audit failed" : "Audit ready"}
+                  </p>
+                )}
               </div>
+              {auditError && (
+                <p className="text-sm text-destructive">{auditError}</p>
+              )}
               {auditResult && (
                 <div className="rounded-lg border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
                   {auditResult}
