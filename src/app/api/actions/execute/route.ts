@@ -9,6 +9,13 @@ const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 const convexClient = convexUrl ? new ConvexHttpClient(convexUrl) : null;
 const gatewayUrl = process.env.Q402_GATEWAY_URL ?? "http://localhost:4020";
 
+type Prefs = {
+  allowedContracts?: string[];
+  blockedContracts?: string[];
+  maxOnchainUsd?: number;
+  maxSpend?: number;
+};
+
 type ActionPayload =
   | { actionType: "transfer"; to: `0x${string}`; amount: string; network: "bscTestnet" | "bscMainnet" }
   | { actionType: "register"; agentId: string; owner: `0x${string}`; network: "bscTestnet" | "bscMainnet" };
@@ -32,15 +39,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Wallet address is required" }, { status: 400 });
   }
 
-  const user = await convexClient.query(api.functions.users.getUserByWallet, { wallet: body.wallet });
-  const prefs = (user?.prefs as
-    | {
-        allowedContracts?: string[];
-        blockedContracts?: string[];
-        maxOnchainUsd?: number;
-        maxSpend?: number;
-      }
-    | undefined) ?? {};
+  let prefs: Prefs = {};
+  try {
+    const user = await convexClient.query(api.functions.users.getUserByWallet, { wallet: body.wallet });
+    prefs = (user?.prefs as Prefs) ?? {};
+  } catch (err) {
+    console.error("execute: Convex query failed, using empty prefs", err);
+    prefs = {};
+  }
 
   const networkKey: keyof typeof CONTRACT_ADDRESSES = body.network === "bscMainnet" ? "bsc" : "bscTestnet";
   const tx =
