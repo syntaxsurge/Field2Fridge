@@ -1,4 +1,4 @@
-// Ensure BigInt values serialize cleanly in JSON responses (Q402 middleware includes BigInt fields)
+// Ensure BigInt values serialize cleanly in JSON responses
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
@@ -9,154 +9,140 @@ import express from "express";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { bsc, bscTestnet } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { createQ402Middleware } = require("q402/packages/middleware-express/src");
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { SupportedNetworks } = require("@q402/core");
-
-declare global {
-  namespace Express {
-    interface Request {
-      payment?: {
-        verified: boolean;
-        payer: string;
-        amount: string;
-        token: string;
-      };
-    }
-  }
-}
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-const PORT = process.env.Q402_PORT ? Number(process.env.Q402_PORT) : 4020;
+const PORT = Number(process.env.Q402_PORT ?? 4020);
 const rpcUrl = process.env.Q402_RPC_URL ?? "https://bsc-testnet.publicnode.com";
-const signerPk = process.env.Q402_SIGNER_PRIVATE_KEY;
-const tokenAddress = process.env.Q402_TOKEN_ADDRESS ?? process.env.NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS;
-const implementationContract =
-  process.env.Q402_IMPLEMENTATION_CONTRACT ?? process.env.NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS;
-const verifyingContract = process.env.Q402_VERIFYING_CONTRACT ?? implementationContract;
-const recipient = process.env.Q402_RECIPIENT_ADDRESS ?? process.env.NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS;
-const network =
-  process.env.Q402_NETWORK === "bsc-mainnet" ? SupportedNetworks.BSC_MAINNET : SupportedNetworks.BSC_TESTNET;
-const demoMode = process.env.Q402_DEMO_MODE === "true";
+const signerPk = process.env.Q402_SIGNER_PRIVATE_KEY as `0x${string}` | undefined;
+const network = process.env.Q402_NETWORK === "bsc-mainnet" ? "BSC_MAINNET" : "BSC_TESTNET";
+const chain = network === "BSC_MAINNET" ? bsc : bscTestnet;
 
-if (!signerPk) {
-  console.warn("Q402_SIGNER_PRIVATE_KEY missing; gateway will still start but cannot settle payments.");
-}
-
-if (!tokenAddress || tokenAddress === "0x0000000000000000000000000000000000000000") {
-  throw new Error("Q402_TOKEN_ADDRESS (or NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS) must be configured.");
-}
-
-if (!implementationContract || implementationContract === "0x0000000000000000000000000000000000000000") {
-  throw new Error("Q402_IMPLEMENTATION_CONTRACT (or NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS) must be configured.");
-}
-
-const chain = network === SupportedNetworks.BSC_MAINNET ? bsc : bscTestnet;
-const walletClient = signerPk
-  ? createWalletClient({
-      account: privateKeyToAccount(signerPk as `0x${string}`),
-      chain,
-      transport: http(rpcUrl),
-    })
-  : undefined;
+console.log("[402-demo] network:", network);
+console.log("[402-demo] rpcUrl:", rpcUrl);
+console.log("[402-demo] signerPk present:", !!signerPk);
 
 const publicClient = createPublicClient({
   chain,
   transport: http(rpcUrl),
 });
 
-const middleware = createQ402Middleware({
-  network,
-  recipientAddress: (recipient as `0x${string}`) ?? "0x0000000000000000000000000000000000000000",
-  implementationContract: (implementationContract as `0x${string}`) ?? "0x0000000000000000000000000000000000000000",
-  verifyingContract: (verifyingContract as `0x${string}`) ?? "0x0000000000000000000000000000000000000000",
-  walletClient: walletClient ?? ({} as any),
-  endpoints: [
-    {
-      path: "/api/execute",
-      amount: "1000000000000000", // 0.001 token units
-      token: (tokenAddress as `0x${string}`) ?? "0x0000000000000000000000000000000000000000",
-      description: "Execute on-chain action via Field2Fridge gateway",
-    },
-  ],
-  autoSettle: false,
-});
+const walletClient = signerPk
+  ? createWalletClient({
+      chain,
+      transport: http(rpcUrl),
+      account: privateKeyToAccount(signerPk),
+    })
+  : undefined;
 
-app.use(middleware);
+if (!walletClient) {
+  console.warn("[402-demo] WARNING: Q402_SIGNER_PRIVATE_KEY not set; will not send real txs");
+}
+
+const tokenAddress = process.env.Q402_TOKEN_ADDRESS || process.env.NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS;
+const recipientAddress = process.env.Q402_RECIPIENT_ADDRESS || process.env.NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS;
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+// Minimal 402-style flow:
+// First call (no X-PAYMENT): respond 402 + payment details
+// Second call (with X-PAYMENT): log header and (optionally) send tx
 app.post("/api/execute", async (req, res) => {
-  if (!req.payment || !req.payment.verified) {
-    if (demoMode && req.headers["x-payment"] === "demo-ok") {
-      // Demo bypass for wallets that cannot sign EIP-7702 authorization tuples
-      req.payment = {
-        verified: true,
-        payer: "demo",
-        amount: "0",
-        token: tokenAddress,
-      };
-    } else {
-    return res.status(402).json({ error: "Payment verification required" });
-    }
-  }
-
-  const { tx } = req.body as { tx?: { to?: string; data?: string; value?: string | number | bigint } };
-  if (!tx?.to || !tx?.data) {
-    console.error("[q402-gateway] Missing tx payload", tx);
-    return res.status(400).json({ error: "Missing tx payload" });
-  }
-
-  if (!walletClient) {
-    console.error("[q402-gateway] No walletClient configured; set Q402_SIGNER_PRIVATE_KEY");
-    return res.status(500).json({ error: "Gateway signer not configured" });
-  }
-
   try {
+    const xPayment = req.header("X-PAYMENT");
+    const tx = req.body?.tx as
+      | {
+          to?: string;
+          data?: string;
+          value?: string | number | bigint | null;
+        }
+      | undefined;
+
+    if (!tx?.to || !tx?.data) {
+      console.error("[402-demo] Missing tx.to or tx.data", tx);
+      return res.status(400).json({ error: "Missing tx.to or tx.data" });
+    }
+
+    if (!xPayment) {
+      console.log("[402-demo] No X-PAYMENT header; returning 402");
+      const nowSec = Math.floor(Date.now() / 1000);
+      const deadlineSec = nowSec + 60 * 60; // 1h
+      const paymentDetails = {
+        scheme: "evm/eip712-witness-demo",
+        networkId: network === "BSC_MAINNET" ? "bsc-mainnet" : "bsc-testnet",
+        token: tokenAddress,
+        amount: "1000000000000000", // 0.001
+        to: recipientAddress,
+        implementationContract: recipientAddress,
+        witness: {
+          domain: {
+            name: "F2F-402",
+            version: "1",
+            chainId: chain.id,
+            verifyingContract: recipientAddress,
+          },
+          types: {
+            Witness: [
+              { name: "owner", type: "address" },
+              { name: "token", type: "address" },
+              { name: "amount", type: "uint256" },
+              { name: "to", type: "address" },
+              { name: "deadline", type: "uint256" },
+              { name: "paymentId", type: "bytes32" },
+              { name: "nonce", type: "uint256" },
+            ],
+          },
+          primaryType: "Witness",
+          message: {
+            owner: "0x0000000000000000000000000000000000000000",
+            token: tokenAddress,
+            amount: "1000000000000000",
+            to: recipientAddress,
+            deadline: String(deadlineSec),
+            paymentId: "0x0000000000000000000000000000000000000000000000000000000000000000",
+            nonce: "0",
+          },
+        },
+      };
+      return res.status(402).json(paymentDetails);
+    }
+
+    console.log("[402-demo] X-PAYMENT header received:", xPayment);
+
+    if (!walletClient) {
+      console.warn("[402-demo] No signer in gateway; simulating success");
+      return res.json({ ok: true, txHash: "0xSIMULATED" });
+    }
+
     const valueBigInt = tx.value == null ? 0n : BigInt(tx.value as string | number | bigint);
-    console.log("[q402-gateway] Sending tx", { to: tx.to, data: tx.data, value: valueBigInt.toString() });
+    console.log("[402-demo] Sending tx:", {
+      to: tx.to,
+      data: tx.data,
+      value: valueBigInt.toString(),
+    });
 
     const hash = await walletClient.sendTransaction({
       to: tx.to as `0x${string}`,
       data: tx.data as `0x${string}`,
       value: valueBigInt,
-      account: walletClient.account,
     });
 
-    console.log("[q402-gateway] Sent tx hash", hash);
-
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
-    return res.json({
-      ok: true,
-      txHash: hash,
-      blockNumber: receipt.blockNumber?.toString(),
-      payer: req.payment.payer,
-    });
-  } catch (err) {
-    console.error("[q402-gateway] ERROR sending tx", err);
+    console.log("[402-demo] Sent tx; hash:", hash);
+    return res.json({ ok: true, txHash: hash });
+  } catch (err: any) {
+    console.error("[402-demo] ERROR in /api/execute", err);
     return res.status(500).json({
       error: "Internal server error in gateway",
-      details: (err as Error).message,
+      details: String(err?.message ?? err),
     });
   }
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Q402 gateway running on http://localhost:${PORT}`);
-});
-
-server.on("error", (err: NodeJS.ErrnoException) => {
-  if (err.code === "EADDRINUSE") {
-    console.error(`Port ${PORT} is already in use. Stop the other process or set Q402_PORT.`);
-    process.exit(1);
-  }
-  console.error("Gateway server error:", err.message);
-  process.exit(1);
+app.listen(PORT, () => {
+  console.log(`402 demo gateway running on http://localhost:${PORT}`);
 });

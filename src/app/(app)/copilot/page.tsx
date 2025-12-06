@@ -482,35 +482,41 @@ export default function CopilotPage() {
                 </Button>
                 {executeError && <p className="text-sm text-destructive">{executeError}</p>}
               </div>
-              {riskNotes && (
-                <div className="rounded-lg border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
-                  <p className="font-semibold">Risk preview (ChainGPT)</p>
-                  <p className="text-muted-foreground">{riskNotes}</p>
-                </div>
-              )}
-              {(paymentDetailsDebug || paymentHeaderDebug) && (
-                <div className="rounded-lg border bg-muted/40 p-3 text-xs whitespace-pre-wrap">
-                  <p className="font-semibold">Q402 debug</p>
-                  {paymentDetailsDebug && (
-                    <>
-                      <p className="mt-1 font-medium text-foreground/80">Payment details</p>
-                      <pre className="text-muted-foreground">{paymentDetailsDebug}</pre>
-                    </>
-                  )}
-                  {paymentHeaderDebug && (
-                    <>
-                      <p className="mt-2 font-medium text-foreground/80">X-PAYMENT header</p>
-                      <pre className="text-muted-foreground break-all">{paymentHeaderDebug}</pre>
-                    </>
-                  )}
-                </div>
-              )}
-              {executeResult && (
-                <div className="rounded-lg border bg-muted/40 p-3 text-sm">
-                  <p className="font-semibold">Executed</p>
-                  <p className="text-muted-foreground">Tx hash: {executeResult}</p>
-                </div>
-              )}
+              <div className="grid gap-4 lg:grid-cols-2">
+                {riskNotes && (
+                  <div className="rounded-lg border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
+                    <p className="font-semibold">Risk preview (ChainGPT)</p>
+                    <p className="text-muted-foreground">{riskNotes}</p>
+                  </div>
+                )}
+                {(paymentDetailsDebug || paymentHeaderDebug) && (
+                  <div className="rounded-lg border bg-muted/40 p-3 text-xs">
+                    <p className="font-semibold">Q402 debug</p>
+                    {paymentDetailsDebug && (
+                      <>
+                        <p className="mt-1 font-medium text-foreground/80">Payment details</p>
+                        <pre className="text-muted-foreground whitespace-pre-wrap break-words rounded-md bg-background/50 p-2">
+                          {paymentDetailsDebug}
+                        </pre>
+                      </>
+                    )}
+                    {paymentHeaderDebug && (
+                      <>
+                        <p className="mt-2 font-medium text-foreground/80">X-PAYMENT header</p>
+                        <pre className="text-muted-foreground whitespace-pre-wrap break-words rounded-md bg-background/50 p-2 max-h-48 overflow-auto">
+                          {paymentHeaderDebug}
+                        </pre>
+                      </>
+                    )}
+                  </div>
+                )}
+                {executeResult && (
+                  <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+                    <p className="font-semibold">Executed</p>
+                    <p className="text-muted-foreground">Tx hash: {executeResult}</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
