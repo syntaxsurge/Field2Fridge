@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CartSuggestion, summarizeCart } from "@/features/household/services/cart";
+import { HouseholdNavTabs } from "@/components/layout/household-nav-tabs";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -131,6 +132,8 @@ export default function CartPage() {
           </p>
         )}
       </div>
+
+      <HouseholdNavTabs />
 
       <Card>
         <CardHeader>

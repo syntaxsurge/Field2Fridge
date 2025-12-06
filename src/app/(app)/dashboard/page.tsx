@@ -144,114 +144,122 @@ export default function DashboardPage() {
 
         <TabsContent value="household" className="space-y-6 pt-6">
           <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">Pantry risk</CardTitle>
-                <CardDescription>Forecasted run-outs in the next 7 days.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-semibold">
-                    {householdOverview === undefined
-                      ? "…"
-                      : `${householdOverview.riskyCount} item${householdOverview.riskyCount === 1 ? "" : "s"}`}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {householdOverview === undefined
-                      ? "Computing risk…"
-                      : riskyNames.length > 0
-                        ? riskyNames.join(", ")
-                        : "No items at risk"}
-                  </p>
-                </div>
-                <ShoppingBag className="h-10 w-10 text-primary" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">Spend guardrails</CardTitle>
-                <CardDescription>Weekly budget vs approved carts.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-semibold">
-                    {householdOverview === undefined
-                      ? "…"
-                      : `$${householdOverview.spentThisWeek.toFixed(2)} / $${householdOverview.weeklyBudget.toFixed(2)}`}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {householdOverview === undefined
-                      ? "Loading"
-                      : householdOverview.spentThisWeek > householdOverview.weeklyBudget
-                        ? "Over weekly budget"
-                        : "Tracking approved spend"}
-                  </p>
-                </div>
-                <CreditCard className="h-10 w-10 text-primary" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">Safety state</CardTitle>
-                <CardDescription>Allowlists, caps, and audit logging.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-semibold">
-                    {householdOverview === undefined
-                      ? "…"
-                      : householdOverview.approvalMode === "auto"
-                        ? `Auto < $${householdOverview.perOrderCap.toFixed(0)}`
-                        : "Manual approvals"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {householdOverview === undefined
-                      ? "Loading"
-                      : `${Object.values(householdOverview.vendors).filter(Boolean).length} vendors allowed`}
-                  </p>
-                </div>
-                <Lock className="h-10 w-10 text-primary" />
-              </CardContent>
-            </Card>
-          </div>
-          <Card>
-            <CardHeader className="space-y-1">
-              <CardTitle>Upcoming cart</CardTitle>
-              <CardDescription>
-                Generated from recent consumption patterns and vendor preferences.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm md:grid-cols-3">
-              {householdOverview === undefined && (
-                <p className="text-muted-foreground">Loading upcoming cart…</p>
-              )}
-              {householdOverview && !upcomingCart && (
-                <p className="text-muted-foreground">
-                  No cart generated yet. Add pantry items and enable vendors to create a suggestion.
-                </p>
-              )}
-              {upcomingCart && (
-                <>
-                  <div className="rounded-lg border bg-muted/50 p-3">
-                    <p className="font-medium">Vendor</p>
-                    <p className="text-muted-foreground">{upcomingCart.vendor ?? "None"}</p>
-                  </div>
-                  <div className="rounded-lg border bg-muted/50 p-3">
-                    <p className="font-medium">Est. total</p>
-                    <p className="text-muted-foreground">${upcomingCart.total.toFixed(2)}</p>
-                  </div>
-                  <div className="rounded-lg border bg-muted/50 p-3">
-                    <p className="font-medium">Approval window</p>
-                    <p className="text-muted-foreground">
-                      {upcomingCart.autoApproveUnder
-                        ? `Auto-approve under $${upcomingCart.autoApproveUnder.toFixed(0)}`
-                        : "Manual review required"}
+            <Link href="/household/pantry" className="block">
+              <Card className="h-full transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-sm">
+                <CardHeader className="space-y-1">
+                  <CardTitle className="text-lg">Pantry risk</CardTitle>
+                  <CardDescription>Forecasted run-outs in the next 7 days.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between">
+                  <div>
+                    <p className="text-3xl font-semibold">
+                      {householdOverview === undefined
+                        ? "…"
+                        : `${householdOverview.riskyCount} item${householdOverview.riskyCount === 1 ? "" : "s"}`}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {householdOverview === undefined
+                        ? "Computing risk…"
+                        : riskyNames.length > 0
+                          ? riskyNames.join(", ")
+                          : "No items at risk"}
                     </p>
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                  <ShoppingBag className="h-10 w-10 text-primary" />
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/household/controls" className="block">
+              <Card className="h-full transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-sm">
+                <CardHeader className="space-y-1">
+                  <CardTitle className="text-lg">Spend guardrails</CardTitle>
+                  <CardDescription>Weekly budget vs approved carts.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between">
+                  <div>
+                    <p className="text-3xl font-semibold">
+                      {householdOverview === undefined
+                        ? "…"
+                        : `$${householdOverview.spentThisWeek.toFixed(2)} / $${householdOverview.weeklyBudget.toFixed(2)}`}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {householdOverview === undefined
+                        ? "Loading"
+                        : householdOverview.spentThisWeek > householdOverview.weeklyBudget
+                          ? "Over weekly budget"
+                          : "Tracking approved spend"}
+                    </p>
+                  </div>
+                  <CreditCard className="h-10 w-10 text-primary" />
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/household/controls" className="block">
+              <Card className="h-full transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-sm">
+                <CardHeader className="space-y-1">
+                  <CardTitle className="text-lg">Safety state</CardTitle>
+                  <CardDescription>Allowlists, caps, and audit logging.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between">
+                  <div>
+                    <p className="text-3xl font-semibold">
+                      {householdOverview === undefined
+                        ? "…"
+                        : householdOverview.approvalMode === "auto"
+                          ? `Auto < $${householdOverview.perOrderCap.toFixed(0)}`
+                          : "Manual approvals"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {householdOverview === undefined
+                        ? "Loading"
+                        : `${Object.values(householdOverview.vendors).filter(Boolean).length} vendors allowed`}
+                    </p>
+                  </div>
+                  <Lock className="h-10 w-10 text-primary" />
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+          <Link href="/household/cart" className="block">
+            <Card className="transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-sm">
+              <CardHeader className="space-y-1">
+                <CardTitle>Upcoming cart</CardTitle>
+                <CardDescription>
+                  Generated from recent consumption patterns and vendor preferences.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 text-sm md:grid-cols-3">
+                {householdOverview === undefined && (
+                  <p className="text-muted-foreground">Loading upcoming cart…</p>
+                )}
+                {householdOverview && !upcomingCart && (
+                  <p className="text-muted-foreground">
+                    No cart generated yet. Add pantry items and enable vendors to create a suggestion.
+                  </p>
+                )}
+                {upcomingCart && (
+                  <>
+                    <div className="rounded-lg border bg-muted/50 p-3">
+                      <p className="font-medium">Vendor</p>
+                      <p className="text-muted-foreground">{upcomingCart.vendor ?? "None"}</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/50 p-3">
+                      <p className="font-medium">Est. total</p>
+                      <p className="text-muted-foreground">${upcomingCart.total.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/50 p-3">
+                      <p className="font-medium">Approval window</p>
+                      <p className="text-muted-foreground">
+                        {upcomingCart.autoApproveUnder
+                          ? `Auto-approve under $${upcomingCart.autoApproveUnder.toFixed(0)}`
+                          : "Manual review required"}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
         </TabsContent>
 
         <TabsContent value="farmer" className="space-y-6 pt-6">
