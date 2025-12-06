@@ -5,7 +5,10 @@ import { NextRequest, NextResponse } from "next/server";
  * Configure AGENT_WEBHOOK_URL to point to your Python agent (default http://localhost:8000/cart/decision).
  */
 export async function POST(req: NextRequest) {
-  const agentUrl = process.env.AGENT_WEBHOOK_URL ?? "http://localhost:8000/cart/decision";
+  const agentUrl =
+    process.env.AGENT_WEBHOOK_URL ??
+    process.env.UAGENT_CART_DECISION_URL ??
+    "http://127.0.0.1:8001/cart_decision";
   const body = await req.json().catch(() => null);
 
   if (!body || typeof body !== "object") {

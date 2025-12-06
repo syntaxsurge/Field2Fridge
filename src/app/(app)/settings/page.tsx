@@ -33,6 +33,30 @@ const defaults: SettingsState = {
   blockedContracts: "",
 };
 
+const prefsToState = (prefs: UserPrefs | undefined): SettingsState => {
+  if (!prefs) return defaults;
+  return {
+    network: prefs.network,
+    txWarnings: prefs.txWarnings,
+    allowDenyLists: prefs.allowDenyLists,
+    telemetry: prefs.telemetry,
+    maxSpend: prefs.maxSpend,
+    maxOnchainUsd: prefs.maxOnchainUsd,
+    allowedContracts: (prefs.allowedContracts ?? []).join(", "),
+    blockedContracts: (prefs.blockedContracts ?? []).join(", "),
+  };
+};
+
+const statesEqual = (a: SettingsState, b: SettingsState) =>
+  a.network === b.network &&
+  a.txWarnings === b.txWarnings &&
+  a.allowDenyLists === b.allowDenyLists &&
+  a.telemetry === b.telemetry &&
+  a.maxSpend === b.maxSpend &&
+  a.maxOnchainUsd === b.maxOnchainUsd &&
+  a.allowedContracts === b.allowedContracts &&
+  a.blockedContracts === b.blockedContracts;
+
 export default function SettingsPage() {
   const { user, isConnected, convexConfigured, isLoadingUser } = useCurrentUser();
   const [state, setState] = useState<SettingsState>(defaults);
@@ -45,22 +69,9 @@ export default function SettingsPage() {
   );
 
   useEffect(() => {
-    if (user?.prefs) {
-      const prefs = user.prefs as UserPrefs;
-      setState({
-        network: prefs.network,
-        txWarnings: prefs.txWarnings,
-        allowDenyLists: prefs.allowDenyLists,
-        telemetry: prefs.telemetry,
-        maxSpend: prefs.maxSpend,
-        maxOnchainUsd: prefs.maxOnchainUsd,
-        allowedContracts: (prefs.allowedContracts ?? []).join(", "),
-        blockedContracts: (prefs.blockedContracts ?? []).join(", "),
-      });
-    } else {
-      setState(defaults);
-    }
-  }, [user]);
+    const next = prefsToState(user?.prefs as UserPrefs | undefined);
+    setState((prev) => (statesEqual(prev, next) ? prev : next));
+  }, [user?.prefs]);
 
   const save = () => {
     if (!user) {
