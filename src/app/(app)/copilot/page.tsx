@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -13,6 +16,8 @@ export default function CopilotPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<string>();
   const [error, setError] = useState<string>();
+  const { user } = useCurrentUser();
+  const logAudit = useMutation(api.functions.audit.logAuditEvent);
 
   const ask = async () => {
     if (!input.trim()) return;
@@ -31,7 +36,15 @@ export default function CopilotPage() {
       if (!res.ok) {
         throw new Error(data.error || "ChainGPT request failed");
       }
-      setMessages((prev) => [...prev, { role: "assistant", content: data.answer ?? "No answer" }]);
+      const answer = data.answer ?? "No answer";
+      setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+      if (user?._id) {
+        await logAudit({
+          userId: user._id,
+          type: "copilot_chat",
+          payload: { question, answer },
+        });
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
