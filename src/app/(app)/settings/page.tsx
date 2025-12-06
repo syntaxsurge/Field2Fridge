@@ -62,6 +62,7 @@ export default function SettingsPage() {
   const [state, setState] = useState<SettingsState>(defaults);
   const [saved, setSaved] = useState<string>();
   const [error, setError] = useState<string>();
+  const [saving, setSaving] = useState(false);
   const updatePrefs = useMutation(api.functions.users.updatePrefs);
   const household = useQuery(
     api.functions.household.fetchSettings,
@@ -79,6 +80,7 @@ export default function SettingsPage() {
       return;
     }
     setError(undefined);
+    setSaving(true);
     setSaved("Saving…");
     updatePrefs({
       userId: user._id,
@@ -103,6 +105,9 @@ export default function SettingsPage() {
       .catch((err) => {
         setSaved(undefined);
         setError((err as Error).message);
+      })
+      .finally(() => {
+        setSaving(false);
       });
   };
 
@@ -231,7 +236,7 @@ export default function SettingsPage() {
           <CardTitle>Protections</CardTitle>
           <CardDescription>Guardrails the agent must enforce before execution.</CardDescription>
         </CardHeader>
-          <CardContent className="space-y-3">
+        <CardContent className="space-y-3">
           <label className="flex items-center justify-between rounded-md border px-3 py-2">
             <div>
               <p className="font-medium">Transaction warnings</p>
@@ -268,13 +273,6 @@ export default function SettingsPage() {
               onChange={() => setState((s) => ({ ...s, telemetry: !s.telemetry }))}
             />
           </label>
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={save} disabled={isLoadingUser}>
-              Save
-            </Button>
-            {saved && <p className="text-sm text-muted-foreground">{saved}</p>}
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </div>
         </CardContent>
       </Card>
 
@@ -305,6 +303,27 @@ export default function SettingsPage() {
           <p className="text-xs text-muted-foreground">
             Enforced before Q402/x-payment executions in Copilot Execute mode.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/30 shadow-sm">
+        <CardHeader>
+          <CardTitle>Save settings</CardTitle>
+          <CardDescription>
+            Apply all network, protection, and allow/deny updates to your wallet profile.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <div className="rounded-md bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+            <p>Changes above are stored per wallet via Convex. Make sure your wallet stays connected.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={save} disabled={isLoadingUser || saving}>
+              {saving ? "Saving…" : "Save settings"}
+            </Button>
+            {saved && <p className="text-sm text-muted-foreground">{saved}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
         </CardContent>
       </Card>
     </main>
