@@ -3,12 +3,21 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { assertWithinPerOrderCap, enforceMaxSpend } from "@/lib/guards/spend";
+import { useAccount, useWalletClient } from "wagmi";
+import {
+  createPaymentHeaderWithWallet,
+  selectPaymentDetails,
+  type PaymentRequiredResponse,
+} from "@/lib/q402-client";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -17,7 +26,21 @@ export default function CopilotPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<string>();
   const [error, setError] = useState<string>();
+  const [auditSource, setAuditSource] = useState("");
+  const [auditAddress, setAuditAddress] = useState("");
+  const [auditResult, setAuditResult] = useState<string>();
+  const [executeStatus, setExecuteStatus] = useState<string>();
+  const [executeResult, setExecuteResult] = useState<string>();
+  const [executeError, setExecuteError] = useState<string>();
+  const [actionType, setActionType] = useState<"transfer" | "register">("transfer");
+  const [recipient, setRecipient] = useState("");
+  const [amount, setAmount] = useState("10");
+  const [agentId, setAgentId] = useState("agent-1");
+  const [network, setNetwork] = useState<"testnet" | "mainnet">("testnet");
+  const [riskNotes, setRiskNotes] = useState<string>();
   const { user } = useCurrentUser();
+  const { address } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const logAudit = useMutation(api.functions.audit.logAuditEvent);
   const settings = useQuery(
     api.functions.household.fetchSettings,
@@ -74,6 +97,153 @@ export default function CopilotPage() {
     }
   };
 
+  const runAudit = async () => {
+    if (!auditSource && !auditAddress) {
+      setAuditResult("Provide source code or a contract address to audit.");
+      return;
+    }
+    setAuditResult(undefined);
+    setExecuteError(undefined);
+    const res = await fetch("/api/chaingpt/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        source: auditSource || undefined,
+        contractAddress: auditAddress || undefined,
+        chainId: network === "mainnet" ? 56 : 97,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuditResult(data.error ?? "Audit failed");
+      return;
+    }
+    const report = data.report ?? "No report returned";
+    setAuditResult(report);
+    if (user?._id) {
+      await logAudit({
+        userId: user._id,
+        type: "copilot_audit",
+        payload: { auditAddress, report },
+      });
+    }
+  };
+
+  const estimateUsd = useMemo(() => {
+    if (actionType === "transfer") {
+      const amt = parseFloat(amount || "0");
+      return isFinite(amt) ? Math.max(amt, 0) : 0;
+    }
+    return 1;
+  }, [actionType, amount]);
+
+  const executeAction = async () => {
+    setExecuteError(undefined);
+    setExecuteStatus("Preparing payment…");
+    setExecuteResult(undefined);
+    setRiskNotes(undefined);
+    if (!walletClient || !address || !user) {
+      setExecuteError("Connect your wallet to execute.");
+      setExecuteStatus(undefined);
+      return;
+    }
+
+    const payload =
+      actionType === "transfer"
+        ? {
+            actionType,
+            to: recipient as `0x${string}`,
+            amount,
+            network: network === "mainnet" ? "bscMainnet" : "bscTestnet",
+          }
+        : {
+            actionType,
+            agentId,
+            owner: address as `0x${string}`,
+            network: network === "mainnet" ? "bscMainnet" : "bscTestnet",
+          };
+
+    const paymentRes = await fetch("/api/actions/payment-details", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, wallet: address, usdEstimate: estimateUsd }),
+    });
+
+    if (!paymentRes.ok) {
+      const data = await paymentRes.json().catch(() => ({}));
+      setExecuteError(data.error ?? "Unable to prepare payment");
+      setExecuteStatus(undefined);
+      return;
+    }
+
+    const paymentJson = (await paymentRes.json()) as {
+      paymentRequired: PaymentRequiredResponse;
+      tx: { to: string; data: string };
+    };
+
+    const details = selectPaymentDetails(paymentJson.paymentRequired);
+    if (!details) {
+      setExecuteError("Gateway did not provide payment details.");
+      setExecuteStatus(undefined);
+      return;
+    }
+
+    // Request ChainGPT risk notes for preview
+    const riskPrompt =
+      actionType === "transfer"
+        ? `Explain risks for transferring ${amount} service tokens to ${recipient} on BNB ${network}.`
+        : `Explain risks for registering agent ${agentId} for ${address} on BNB ${network}.`;
+    const riskRes = await fetch("/api/copilot/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: riskPrompt }),
+    }).catch(() => null);
+    if (riskRes?.ok) {
+      const riskData = await riskRes.json();
+      if (riskData.answer) setRiskNotes(riskData.answer);
+    }
+
+    let paymentHeader: string;
+    try {
+      paymentHeader = await createPaymentHeaderWithWallet(walletClient, details);
+    } catch (err) {
+      setExecuteError((err as Error).message);
+      setExecuteStatus(undefined);
+      return;
+    }
+
+    setExecuteStatus("Executing on-chain via Q402…");
+
+    const execRes = await fetch("/api/actions/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...payload,
+        wallet: address,
+        usdEstimate: estimateUsd,
+        xPayment: paymentHeader,
+      }),
+    });
+
+    const execJson = await execRes.json().catch(() => ({}));
+    if (!execRes.ok) {
+      setExecuteError(execJson.error ?? "Execution failed");
+      setExecuteStatus(undefined);
+      return;
+    }
+
+    const txHash = execJson.txHash ?? "unknown";
+    setExecuteResult(txHash);
+    setExecuteStatus(undefined);
+    if (user?.prefs?.telemetry !== false) {
+      await logAudit({
+        userId: user._id,
+        type: "onchain_action",
+        payload: { actionType, txHash, riskNotes },
+      });
+    }
+  };
+
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-6 pb-16 pt-12 md:px-10">
       <div className="space-y-2">
@@ -85,46 +255,183 @@ export default function CopilotPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Chat</CardTitle>
-          <CardDescription>Answers are powered by ChainGPT.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Textarea
-              placeholder="Ask about your upcoming cart or a transaction preview..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="min-h-[120px]"
-            />
-            <div className="flex items-center gap-3">
-              <Button onClick={ask} disabled={!!status}>
-                {status ?? "Ask"}
-              </Button>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              {!error && status && <p className="text-sm text-muted-foreground">{status}</p>}
-            </div>
-          </div>
+      <Tabs defaultValue="research">
+        <TabsList className="mb-4">
+          <TabsTrigger value="research">Research</TabsTrigger>
+          <TabsTrigger value="audit">Audit</TabsTrigger>
+          <TabsTrigger value="execute">Execute</TabsTrigger>
+        </TabsList>
 
-          <div className="space-y-3">
-            {messages.map((msg, idx) => (
-              <div
-                key={`${msg.role}-${idx}`}
-                className="rounded-lg border bg-muted/40 px-3 py-2 text-sm"
-              >
-                <p className="font-semibold">{msg.role === "user" ? "You" : "Copilot"}</p>
-                <p className="text-muted-foreground whitespace-pre-wrap">{msg.content}</p>
+        <TabsContent value="research">
+          <Card>
+            <CardHeader>
+              <CardTitle>Research</CardTitle>
+              <CardDescription>ChainGPT Web3 LLM for explanations and planning.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="Ask about your upcoming cart or a transaction preview..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  className="min-h-[120px]"
+                />
+                <div className="flex items-center gap-3">
+                  <Button onClick={ask} disabled={!!status}>
+                    {status ?? "Ask"}
+                  </Button>
+                  {error && <p className="text-sm text-destructive">{error}</p>}
+                  {!error && status && <p className="text-sm text-muted-foreground">{status}</p>}
+                </div>
               </div>
-            ))}
-            {messages.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No questions yet. Ask about spend caps, cart decisions, or how to run a NASA climate simulation.
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+
+              <div className="space-y-3">
+                {messages.map((msg, idx) => (
+                  <div
+                    key={`${msg.role}-${idx}`}
+                    className="rounded-lg border bg-muted/40 px-3 py-2 text-sm"
+                  >
+                    <p className="font-semibold">{msg.role === "user" ? "You" : "Copilot"}</p>
+                    <p className="text-muted-foreground whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                ))}
+                {messages.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No questions yet. Ask about spend caps, cart decisions, or how to run a NASA climate simulation.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <Card>
+            <CardHeader>
+              <CardTitle>Audit</CardTitle>
+              <CardDescription>ChainGPT Smart Contract Auditor (source or address).</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Label htmlFor="auditSource">Solidity source (optional)</Label>
+              <Textarea
+                id="auditSource"
+                value={auditSource}
+                onChange={(e) => setAuditSource(e.target.value)}
+                className="min-h-[140px]"
+                placeholder="Paste Solidity contract here..."
+              />
+              <Label htmlFor="auditAddress">Contract address (optional)</Label>
+              <Input
+                id="auditAddress"
+                value={auditAddress}
+                onChange={(e) => setAuditAddress(e.target.value)}
+                placeholder="0x..."
+              />
+              <div className="flex items-center gap-3">
+                <Button onClick={runAudit}>Run audit</Button>
+                {auditResult && <p className="text-sm text-muted-foreground">Audit ready</p>}
+              </div>
+              {auditResult && (
+                <div className="rounded-lg border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
+                  {auditResult}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="execute">
+          <Card>
+            <CardHeader>
+              <CardTitle>Execute (Q402)</CardTitle>
+              <CardDescription>Pay-gated actions with x-payment + policy checks.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Action</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={actionType === "transfer" ? "default" : "outline"}
+                      onClick={() => setActionType("transfer")}
+                    >
+                      Transfer token
+                    </Button>
+                    <Button
+                      variant={actionType === "register" ? "default" : "outline"}
+                      onClick={() => setActionType("register")}
+                    >
+                      Register agent
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Network</Label>
+                  <div className="flex gap-2">
+                    <Button variant={network === "testnet" ? "default" : "outline"} onClick={() => setNetwork("testnet")}>
+                      BNB testnet
+                    </Button>
+                    <Button variant={network === "mainnet" ? "default" : "outline"} onClick={() => setNetwork("mainnet")}>
+                      BNB mainnet
+                    </Button>
+                  </div>
+                </div>
+                {actionType === "transfer" ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="recipient">Recipient</Label>
+                      <Input
+                        id="recipient"
+                        placeholder="0x..."
+                        value={recipient}
+                        onChange={(e) => setRecipient(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">Amount</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="agentId">Agent ID</Label>
+                      <Input id="agentId" value={agentId} onChange={(e) => setAgentId(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Owner</Label>
+                      <Input value={address ?? ""} disabled />
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Button onClick={executeAction} disabled={!!executeStatus}>
+                  {executeStatus ?? "Execute via Q402"}
+                </Button>
+                {executeError && <p className="text-sm text-destructive">{executeError}</p>}
+              </div>
+              {riskNotes && (
+                <div className="rounded-lg border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
+                  <p className="font-semibold">Risk preview (ChainGPT)</p>
+                  <p className="text-muted-foreground">{riskNotes}</p>
+                </div>
+              )}
+              {executeResult && (
+                <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+                  <p className="font-semibold">Executed</p>
+                  <p className="text-muted-foreground">Tx hash: {executeResult}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </main>
   );
 }

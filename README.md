@@ -9,7 +9,7 @@ Field2Fridge is a Next.js 15 App Router project that keeps household pantries st
 - RainbowKit + wagmi for BNB testnet wallets
 - NASA POWER daily agroclimatology API for climate signals
 - ChainGPT API for the `/copilot` assistant
-- Express 402-style payments gateway for premium flows
+- Q402/x-payment gateway (Express) for sign-to-pay protected on-chain actions
 
 ## Quick start
 
@@ -43,7 +43,13 @@ NASA POWER requires **no** keys or additional env. Clean the SpaceAgri placehold
 ## Household + copilot surfaces
 
 - Household: `/household/pantry`, `/household/cart`, `/household/controls` with guardrails (weekly budget, allow/deny lists, approval modes) and audit logs.
-- Copilot: `/copilot` proxies ChainGPT for research and audits; premium/x402 actions respect spend caps and allowlists.
+- Copilot: `/copilot` proxies ChainGPT for research and audits; Execute tab runs Q402-gated transfers/agent registry calls with spend caps, allow/deny lists, previews, and risk warnings.
+
+## Q402 gateway
+
+- Express app at `payments/server.ts`, protected by `createQ402Middleware` and funded by `Q402_SIGNER_PRIVATE_KEY`.
+- Configure `Q402_GATEWAY_URL`, `Q402_TOKEN_ADDRESS`, `Q402_IMPLEMENTATION_CONTRACT`, `Q402_VERIFYING_CONTRACT`, `Q402_RECIPIENT_ADDRESS`, and `Q402_RPC_URL` in env.
+- Next routes `/api/actions/payment-details` and `/api/actions/execute` proxy through the gateway; client builds the `x-payment` header using q402 core helpers.
 
 ## Testing and readiness
 

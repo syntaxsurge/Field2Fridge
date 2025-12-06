@@ -28,3 +28,20 @@ export function ensureVendorAllowed(vendors: Record<string, boolean>, vendor: st
     throw new Error(`${vendor} is blocked by your allow/deny list. Choose an allowed vendor before continuing.`);
   }
 }
+
+export function ensureContractAllowed(
+  target: string,
+  allowed: string[] | undefined,
+  blocked: string[] | undefined,
+) {
+  const normalized = target.toLowerCase();
+  if (blocked?.some((addr) => addr.toLowerCase() === normalized)) {
+    throw new Error(`Target ${target} is blocked by your deny list.`);
+  }
+  if (allowed && allowed.length > 0) {
+    const allowedHit = allowed.some((addr) => addr.toLowerCase() === normalized);
+    if (!allowedHit) {
+      throw new Error(`Target ${target} is not in your allowed contract list.`);
+    }
+  }
+}
