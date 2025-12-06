@@ -75,6 +75,7 @@ app.post("/api/execute", async (req, res) => {
       const paymentDetails = {
         scheme: "evm/eip712-witness-demo",
         networkId: network === "BSC_MAINNET" ? "bsc-mainnet" : "bsc-testnet",
+        chainId: chain.id,
         token: tokenAddress,
         amount: "1000000000000000", // 0.001
         to: recipientAddress,
