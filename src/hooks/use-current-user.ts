@@ -14,6 +14,14 @@ export type UserPrefs = {
   maxSpend: number;
 };
 
+const DEFAULT_PREFS: UserPrefs = {
+  network: "testnet",
+  txWarnings: true,
+  allowDenyLists: true,
+  telemetry: false,
+  maxSpend: 250,
+};
+
 export type UserProfile = {
   _id: Id<"users">;
   wallet: string;
@@ -50,7 +58,12 @@ export function useCurrentUser() {
   return {
     address: address ?? null,
     isConnected,
-    user: (user ?? null) as UserProfile | null,
+    user: user
+      ? ({
+          ...user,
+          prefs: (user.prefs as UserPrefs | undefined) ?? DEFAULT_PREFS,
+        } as UserProfile)
+      : null,
     isLoadingUser,
     convexConfigured: convexAvailable,
   };

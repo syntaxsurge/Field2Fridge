@@ -13,6 +13,7 @@ import type * as functions_audit from "../functions/audit.js";
 import type * as functions_constants from "../functions/constants.js";
 import type * as functions_farmer from "../functions/farmer.js";
 import type * as functions_household from "../functions/household.js";
+import type * as functions_memory from "../functions/memory.js";
 import type * as functions_pantry from "../functions/pantry.js";
 import type * as functions_users from "../functions/users.js";
 
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   "functions/constants": typeof functions_constants;
   "functions/farmer": typeof functions_farmer;
   "functions/household": typeof functions_household;
+  "functions/memory": typeof functions_memory;
   "functions/pantry": typeof functions_pantry;
   "functions/users": typeof functions_users;
 }>;

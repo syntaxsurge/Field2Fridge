@@ -69,11 +69,13 @@ export default function ControlsPage() {
     })
       .then(async () => {
         setStatus("Saved");
-        await logAudit({
-          userId: user._id,
-          type: "household_controls",
-          payload: controls,
-        });
+        if (user.prefs?.telemetry !== false) {
+          await logAudit({
+            userId: user._id,
+            type: "household_controls",
+            payload: controls,
+          });
+        }
       })
       .catch((err) => setError((err as Error).message))
       .finally(() => {

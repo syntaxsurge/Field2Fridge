@@ -59,4 +59,10 @@ export default defineSchema({
     payload: v.any(),
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
+  agent_memories: defineTable({
+    userId: v.id("users"),
+    snapshot: v.any(),
+    source: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
 });

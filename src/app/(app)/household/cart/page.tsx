@@ -125,6 +125,11 @@ export default function CartPage() {
         <p className="text-muted-foreground">
           Suggested carts stay within your spend cap and vendor allowlist. Approve to trigger sandbox checkout.
         </p>
+        {user?.prefs?.txWarnings && (
+          <p className="text-sm text-amber-600">
+            Transaction warnings enabled — we will block anything over your caps or outside allowlists.
+          </p>
+        )}
       </div>
 
       <Card>

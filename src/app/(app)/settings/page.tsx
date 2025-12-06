@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import { useCurrentUser, UserPrefs } from "@/hooks/use-current-user";
 import { api } from "../../../../convex/_generated/api";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import Link from "next/link";
 
 type SettingsState = {
   network: "testnet" | "mainnet";
@@ -32,6 +33,10 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState<string>();
   const [error, setError] = useState<string>();
   const updatePrefs = useMutation(api.functions.users.updatePrefs);
+  const household = useQuery(
+    api.functions.household.fetchSettings,
+    user ? { userId: user._id } : "skip"
+  );
 
   useEffect(() => {
     if (user?.prefs) {
@@ -43,6 +48,8 @@ export default function SettingsPage() {
         telemetry: prefs.telemetry,
         maxSpend: prefs.maxSpend,
       });
+    } else {
+      setState(defaults);
     }
   }, [user]);
 
@@ -146,6 +153,38 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">
               Used by the x402 gateway and Copilot risk checks before submitting transactions.
             </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Household guardrails</CardTitle>
+            <CardDescription>Live limits from Safety &amp; Controls.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {household === undefined && <p className="text-muted-foreground">Loading guardrails…</p>}
+            {household && (
+              <>
+                <p>
+                  <span className="font-medium">Weekly budget:</span>{" "}
+                  ${household.weeklyBudget.toFixed(2)}
+                </p>
+                <p>
+                  <span className="font-medium">Per-order cap:</span>{" "}
+                  ${household.perOrderCap.toFixed(2)} ({household.approvalMode === "auto" ? "auto" : "ask"})
+                </p>
+                <p>
+                  <span className="font-medium">Allowed vendors:</span>{" "}
+                  {Object.entries(household.vendors)
+                    .filter(([, allowed]) => allowed)
+                    .map(([name]) => name)
+                    .join(", ") || "None"}
+                </p>
+                <Link href="/household/controls" className="text-primary underline">
+                  Manage vendors and caps
+                </Link>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
