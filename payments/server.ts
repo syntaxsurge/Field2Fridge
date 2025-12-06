@@ -1,3 +1,9 @@
+// Ensure BigInt values serialize cleanly in JSON responses (Q402 middleware includes BigInt fields)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 import dotenv from "dotenv";
 import express from "express";
 import { createPublicClient, createWalletClient, http } from "viem";
