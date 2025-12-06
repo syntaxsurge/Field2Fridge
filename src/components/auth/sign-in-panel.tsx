@@ -84,7 +84,7 @@ function SignInPanelWithConvex() {
 
     try {
       setStatus("Creating your profile...");
-      await createProfile({ wallet: address, role: activeRole });
+      await createProfile({ wallet: address, role: activeRole, network: "bsc-testnet" });
       router.push(`/dashboard?role=${activeRole}`);
     } catch (err) {
       setError((err as Error).message);

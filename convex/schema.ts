@@ -7,6 +7,7 @@ export default defineSchema({
     role: v.string(), // "household" | "farmer" | "both"
     createdAt: v.number(),
     prefs: v.optional(v.any()),
+    network: v.optional(v.string()),
   }).index("by_wallet", ["wallet"]),
   pantry_items: defineTable({
     userId: v.id("users"),
