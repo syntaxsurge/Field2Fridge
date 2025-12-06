@@ -6,6 +6,7 @@ import { Providers } from "./providers";
 import { cookieToInitialState } from "wagmi";
 import { headers } from "next/headers";
 import { wagmiConfig } from "@/lib/wallet/config";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +42,7 @@ export default async function RootLayout({
             <SiteHeader />
             <div className="flex-1">{children}</div>
           </div>
+          <Toaster richColors position="top-right" />
         </Providers>
       </body>
     </html>
