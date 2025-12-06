@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const DEFAULT_BASE = "https://api.chaingpt.org";
+
 export async function POST(req: NextRequest) {
   const apiKey = process.env.CHAINGPT_API_KEY;
+  const baseUrl = process.env.CHAINGPT_BASE_URL ?? DEFAULT_BASE;
   if (!apiKey) {
     return NextResponse.json({ error: "CHAINGPT_API_KEY is not configured." }, { status: 500 });
   }
@@ -15,7 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Question is required." }, { status: 400 });
   }
 
-  const res = await fetch("https://api.chaingpt.org/chat/stream", {
+  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/stream`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,

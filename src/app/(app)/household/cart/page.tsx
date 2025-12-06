@@ -11,6 +11,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { recordAgentWebhook } from "@/lib/api/cart-agent";
 
 export default function CartPage() {
   const { user, isConnected, convexConfigured, isLoadingUser } = useCurrentUser();
@@ -44,6 +45,12 @@ export default function CartPage() {
       toast.success("Cart approved", {
         description: "Sandbox cart created under your current caps.",
       });
+      await recordAgentWebhook({
+        wallet: user.wallet,
+        items: cart.map((c) => `${c.name} x${c.suggestedQty} ${c.unit}`),
+        totalUsd: summarizeCart(cart).total,
+        decision: "approved",
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -69,6 +76,12 @@ export default function CartPage() {
       toast.message("Cart declined", {
         description: "We’ll recompute suggestions on the next data refresh.",
       });
+      await recordAgentWebhook({
+        wallet: user.wallet,
+        items: cartData?.suggestions?.map((c) => `${c.name} x${c.suggestedQty} ${c.unit}`) ?? [],
+        totalUsd: summarizeCart(cartData?.suggestions ?? []).total,
+        decision: "declined",
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -89,6 +102,14 @@ export default function CartPage() {
       );
       setStatus("Fulfilled");
       toast.success("Marked fulfilled", { description: "Last cart marked as fulfilled." });
+      await recordAgentWebhook({
+        wallet: user.wallet,
+        items: Array.isArray(lastEvent.items)
+          ? lastEvent.items.map((c) => `${(c as { name?: string }).name ?? "item"} x${(c as { suggestedQty?: number }).suggestedQty ?? "?"} ${(c as { unit?: string }).unit ?? ""}`)
+          : [],
+        totalUsd: typeof lastEvent.total === "number" ? lastEvent.total : 0,
+        decision: "fulfilled",
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {
