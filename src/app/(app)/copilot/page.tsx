@@ -1,5 +1,7 @@
 "use client";
 
+import "@/lib/polyfills/bigint";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +38,8 @@ export default function CopilotPage() {
   const [executeStatus, setExecuteStatus] = useState<string>();
   const [executeResult, setExecuteResult] = useState<string>();
   const [executeError, setExecuteError] = useState<string>();
+  const [paymentDetailsDebug, setPaymentDetailsDebug] = useState<string>();
+  const [paymentHeaderDebug, setPaymentHeaderDebug] = useState<string>();
   const [actionType, setActionType] = useState<"transfer" | "register">("transfer");
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("10");
@@ -220,6 +224,7 @@ export default function CopilotPage() {
       network: network === "mainnet" ? "bsc-mainnet" : "bsc-testnet",
     });
     console.debug("[q402] selected payment details", details);
+    setPaymentDetailsDebug(JSON.stringify(details, null, 2));
     if (!details) {
       setExecuteError("Gateway did not provide payment details.");
       setExecuteStatus(undefined);
@@ -252,6 +257,7 @@ export default function CopilotPage() {
         paymentHeader = await createPaymentHeaderWithWallet(walletClient, details);
       }
       console.debug("[q402] signed payment header", paymentHeader);
+      setPaymentHeaderDebug(paymentHeader);
     } catch (err) {
       console.error("[q402] Failed to sign authorization tuple", err);
       if (demoMode) {
@@ -480,6 +486,23 @@ export default function CopilotPage() {
                 <div className="rounded-lg border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
                   <p className="font-semibold">Risk preview (ChainGPT)</p>
                   <p className="text-muted-foreground">{riskNotes}</p>
+                </div>
+              )}
+              {(paymentDetailsDebug || paymentHeaderDebug) && (
+                <div className="rounded-lg border bg-muted/40 p-3 text-xs whitespace-pre-wrap">
+                  <p className="font-semibold">Q402 debug</p>
+                  {paymentDetailsDebug && (
+                    <>
+                      <p className="mt-1 font-medium text-foreground/80">Payment details</p>
+                      <pre className="text-muted-foreground">{paymentDetailsDebug}</pre>
+                    </>
+                  )}
+                  {paymentHeaderDebug && (
+                    <>
+                      <p className="mt-2 font-medium text-foreground/80">X-PAYMENT header</p>
+                      <pre className="text-muted-foreground break-all">{paymentHeaderDebug}</pre>
+                    </>
+                  )}
                 </div>
               )}
               {executeResult && (
