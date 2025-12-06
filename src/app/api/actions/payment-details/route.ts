@@ -68,7 +68,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    paymentRequired = await paymentProbe.json();
+    const raw = await paymentProbe.json();
+    // Normalize to the shape expected by selectPaymentDetails when using the minimal 402 gateway
+    paymentRequired = Array.isArray(raw?.accepts)
+      ? raw
+      : {
+          x402Version: 1,
+          accepts: [raw],
+        };
   } catch (err) {
     return NextResponse.json({ error: `Gateway unreachable: ${(err as Error).message}` }, { status: 502 });
   }
