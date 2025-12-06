@@ -172,7 +172,13 @@ export default function PantryPage() {
                 {list.map((item) => {
                   const days = daysUntilEmpty(item);
                   const status =
-                    days === Infinity ? "Unknown" : days <= 3 ? "Critical" : days <= 7 ? "Watch" : "Healthy";
+                    days === Infinity
+                      ? "Unknown"
+                      : days > 5
+                        ? "Comfortable"
+                        : days > 2
+                          ? "Watch"
+                          : "Critical";
                   const isEditing = editingId && item._id && editingId === item._id;
                   const key =
                     item._id && typeof item._id.toString === "function"
@@ -199,7 +205,17 @@ export default function PantryPage() {
                         {item.quantity} {item.unit}
                       </span>
                       <span>{days === Infinity ? "—" : days.toFixed(1)}</span>
-                      <Badge variant={status === "Healthy" ? "outline" : "secondary"}>{status}</Badge>
+                      <Badge
+                        variant={
+                          status === "Comfortable"
+                            ? "outline"
+                            : status === "Watch"
+                              ? "secondary"
+                              : "secondary"
+                        }
+                      >
+                        {status}
+                      </Badge>
                     </div>
                   );
                 })}

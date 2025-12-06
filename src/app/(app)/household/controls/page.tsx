@@ -21,7 +21,7 @@ type ControlsState = {
 const defaultControls: ControlsState = {
   weeklyBudget: 80,
   perOrderCap: 60,
-  vendors: { "Local Co-op": true, Amazon: true, Walmart: false },
+  vendors: { "Local Co-op": true, Amazon: true, Walmart: true },
   approvalMode: "ask",
 };
 
@@ -36,6 +36,7 @@ export default function ControlsPage() {
   const [controls, setControls] = useState<ControlsState>(defaultControls);
   const [status, setStatus] = useState<string>();
   const [error, setError] = useState<string>();
+  const [toastMessage, setToastMessage] = useState<string>();
 
   useEffect(() => {
     if (settings) {
@@ -70,6 +71,7 @@ export default function ControlsPage() {
     })
       .then(async () => {
         setStatus("Saved");
+        setToastMessage("Controls saved. Future carts will honor these guardrails.");
         if (user.prefs?.telemetry !== false) {
           await logAudit({
             userId: user._id,
@@ -81,6 +83,7 @@ export default function ControlsPage() {
       .catch((err) => setError((err as Error).message))
       .finally(() => {
         setTimeout(() => setStatus(undefined), 1500);
+        setTimeout(() => setToastMessage(undefined), 2400);
       });
   };
 
@@ -120,6 +123,7 @@ export default function ControlsPage() {
         <p className="text-muted-foreground">
           Spend caps, vendor allowlists, and approval modes the agent must follow.
         </p>
+        {toastMessage && <p className="text-sm text-emerald-600">{toastMessage}</p>}
       </div>
 
       <HouseholdNavTabs />
@@ -143,7 +147,7 @@ export default function ControlsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cap">Per-order cap (USD)</Label>
+              <Label htmlFor="cap">Per-order auto-approval cap (USD)</Label>
               <Input
                 id="cap"
                 type="number"
@@ -193,7 +197,7 @@ export default function ControlsPage() {
             variant={controls.approvalMode === "auto" ? "default" : "outline"}
             onClick={() => setControls((prev) => ({ ...prev, approvalMode: "auto" }))}
           >
-            Auto-approve under caps
+            Auto-approve under cap
           </Button>
           <div className="flex-1" />
           <Button onClick={save} disabled={!!status || isLoadingUser}>
