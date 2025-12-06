@@ -28,6 +28,8 @@ export default defineSchema({
   cart_events: defineTable({
     userId: v.id("users"),
     decision: v.union(v.literal("approved"), v.literal("declined")),
+    vendor: v.optional(v.string()),
+    fulfillmentStatus: v.optional(v.string()),
     items: v.array(
       v.object({
         name: v.string(),

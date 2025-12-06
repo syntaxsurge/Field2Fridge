@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -18,10 +18,24 @@ export default function CopilotPage() {
   const [error, setError] = useState<string>();
   const { user } = useCurrentUser();
   const logAudit = useMutation(api.functions.audit.logAuditEvent);
+  const settings = useQuery(
+    api.functions.household.fetchSettings,
+    user ? { userId: user._id } : "skip"
+  );
+
+  const premiumCost = 0.5;
 
   const ask = async () => {
     if (!input.trim()) return;
     const question = input.trim();
+    if (settings && premiumCost > settings.perOrderCap) {
+      setError(
+        `Copilot request cost $${premiumCost.toFixed(
+          2
+        )} exceeds your per-order cap of $${settings.perOrderCap.toFixed(2)}. Lower cost or raise cap in Safety settings.`
+      );
+      return;
+    }
     setMessages((prev) => [...prev, { role: "user", content: question }]);
     setInput("");
     setStatus("Thinking...");
