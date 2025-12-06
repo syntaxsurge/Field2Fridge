@@ -28,7 +28,7 @@ const featureCards = [
   {
     title: "Trusted & private",
     description:
-      "BNB + x402 micropayments, uAgent + Agentverse presence, and zk attestations for zero-knowledge sharing.",
+      "BNB + 402 witness payments, uAgent + Agentverse presence, and zk attestations for zero-knowledge sharing.",
     icon: ShieldCheck,
     href: "/dashboard",
   },
@@ -73,7 +73,7 @@ export default function MarketingPage() {
             <div className="rounded-lg border bg-card/60 p-4 shadow-sm">
               <p className="font-semibold text-foreground">Ready for testnets</p>
               <p>
-                BNB testnet, x402 micropayments, and ChainGPT audits baked in.
+                BNB testnet, 402 witness payments, and ChainGPT audits baked in.
               </p>
             </div>
           </div>
@@ -108,7 +108,7 @@ export default function MarketingPage() {
               <div className="space-y-1">
                 <p className="font-medium">Safe execution</p>
                 <p className="text-muted-foreground">
-                  Previews BNB/x402 transactions with caps and allowlists.
+                  Previews BNB/402 transactions with caps and allowlists.
                 </p>
               </div>
               <Badge variant="outline">Guarded</Badge>

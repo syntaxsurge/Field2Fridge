@@ -185,7 +185,7 @@ export default function SettingsPage() {
               onChange={(e) => setState((s) => ({ ...s, maxSpend: parseFloat(e.target.value || "0") }))}
             />
             <p className="text-xs text-muted-foreground">
-              Used by the x402 gateway and Copilot risk checks before submitting transactions.
+              Used by the 402 gateway and Copilot risk checks before submitting transactions.
             </p>
             <Label htmlFor="maxOnchainUsd">Max per on-chain tx</Label>
             <Input
@@ -194,7 +194,7 @@ export default function SettingsPage() {
               value={state.maxOnchainUsd}
               onChange={(e) => setState((s) => ({ ...s, maxOnchainUsd: parseFloat(e.target.value || "0") }))}
             />
-            <p className="text-xs text-muted-foreground">Guardrail for Q402-backed executions.</p>
+            <p className="text-xs text-muted-foreground">Guardrail for 402-protected executions.</p>
           </CardContent>
         </Card>
 
@@ -279,7 +279,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Contract allow/deny lists</CardTitle>
-          <CardDescription>Restrict Q402 executions to known-safe contracts.</CardDescription>
+          <CardDescription>Restrict 402 executions to known-safe contracts.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
@@ -300,9 +300,7 @@ export default function SettingsPage() {
               placeholder="0x...,0x..."
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Enforced before Q402/x-payment executions in Copilot Execute mode.
-          </p>
+          <p className="text-xs text-muted-foreground">Enforced before 402 executions in Copilot Execute mode.</p>
         </CardContent>
       </Card>
 

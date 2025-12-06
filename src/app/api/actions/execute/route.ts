@@ -24,12 +24,9 @@ export async function POST(req: NextRequest) {
   const body = (await req.json()) as ActionPayload & {
     wallet: `0x${string}`;
     usdEstimate?: number;
-    xPayment?: string;
+    witness?: unknown;
+    signature?: `0x${string}`;
   };
-
-  if (!body.xPayment) {
-    return NextResponse.json({ error: "Missing x-payment header" }, { status: 400 });
-  }
 
   if (!convexClient) {
     return NextResponse.json({ error: "Convex not configured" }, { status: 500 });
@@ -64,12 +61,25 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-payment": body.xPayment,
       },
-      body: JSON.stringify({ tx, wallet: body.wallet, network: networkKey, usdEstimate: body.usdEstimate }),
+      body: JSON.stringify({
+        tx,
+        wallet: body.wallet,
+        network: networkKey,
+        usdEstimate: body.usdEstimate,
+        witness: body.witness,
+        signature: body.signature,
+      }),
     });
 
-    const payload = await res.json().catch(() => ({}));
+    const rawText = await res.text();
+    let payload: unknown = rawText;
+    try {
+      payload = JSON.parse(rawText);
+    } catch {
+      payload = { raw: rawText };
+    }
+
     return NextResponse.json(payload, { status: res.status });
   } catch (err) {
     return NextResponse.json({ error: `Gateway error: ${(err as Error).message}` }, { status: 502 });

@@ -9,7 +9,7 @@ Field2Fridge is a Next.js 15 App Router project that keeps household pantries st
 - RainbowKit + wagmi for BNB testnet wallets
 - NASA POWER daily agroclimatology API for climate signals
 - ChainGPT API for the `/copilot` assistant
-- Q402/x-payment gateway (Express) for sign-to-pay protected on-chain actions
+- 402 payment gateway (Express) for sign-to-pay protected on-chain actions
 
 ## Quick start
 
@@ -28,7 +28,7 @@ Set these in `.env.local` (or `.env` for local dev):
 - `NEXT_PUBLIC_CONVEX_URL`
 - `CHAINGPT_API_KEY` and `CHAINGPT_BASE_URL`
 - `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS`, `NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS` (BNB testnet)
-- `Q402_SPONSOR_SECRET` (for 402 gateway) and optional signer/RPC for x402 flows
+- `Q402_GATEWAY_URL`, `Q402_TOKEN_ADDRESS`, `Q402_RECIPIENT_ADDRESS`, `Q402_RPC_URL`, and optional `Q402_SIGNER_PRIVATE_KEY` for the 402 gateway
 - `MEMBASE_*` if using Unibase memory
 
 NASA POWER requires **no** keys or additional env. Clean the SpaceAgri placeholders from existing envs; they are unused.
@@ -43,13 +43,13 @@ NASA POWER requires **no** keys or additional env. Clean the SpaceAgri placehold
 ## Household + copilot surfaces
 
 - Household: `/household/pantry`, `/household/cart`, `/household/controls` with guardrails (weekly budget, allow/deny lists, approval modes) and audit logs.
-- Copilot: `/copilot` proxies ChainGPT for research and audits; Execute tab runs Q402-gated transfers/agent registry calls with spend caps, allow/deny lists, previews, and risk warnings.
+- Copilot: `/copilot` proxies ChainGPT for research and audits; Execute tab runs 402-gated transfers/agent registry calls with spend caps, allow/deny lists, previews, and risk warnings.
 
-## Q402 gateway
+## 402 gateway
 
-- Express app at `payments/server.ts`, protected by `createQ402Middleware` and funded by `Q402_SIGNER_PRIVATE_KEY`.
-- Configure `Q402_GATEWAY_URL`, `Q402_TOKEN_ADDRESS`, `Q402_IMPLEMENTATION_CONTRACT`, `Q402_VERIFYING_CONTRACT`, `Q402_RECIPIENT_ADDRESS`, and `Q402_RPC_URL` in env.
-- Next routes `/api/actions/payment-details` and `/api/actions/execute` proxy through the gateway; client builds the `x-payment` header using q402 core helpers.
+- Express app at `payments/server.ts` returning HTTP 402 with EIP-712 witness details; second call verifies the signature and submits the transaction (or simulates if no signer is configured).
+- Configure `Q402_GATEWAY_URL`, `Q402_NETWORK`, `Q402_TOKEN_ADDRESS`, `Q402_RECIPIENT_ADDRESS`, `Q402_RPC_URL`, and optional `Q402_SIGNER_PRIVATE_KEY` in env.
+- Next routes `/api/actions/execute` proxy through the gateway; the copilot signs the witness client-side with wagmi before resubmitting.
 
 ## Testing and readiness
 

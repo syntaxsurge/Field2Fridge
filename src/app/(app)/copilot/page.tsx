@@ -14,14 +14,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { assertWithinPerOrderCap, enforceMaxSpend } from "@/lib/guards/spend";
-import { useAccount, useWalletClient } from "wagmi";
-import {
-  createPaymentHeaderWithWallet,
-  createPaymentHeader,
-  selectPaymentDetails,
-  type PaymentRequiredResponse,
-} from "@/lib/q402-client";
-import { privateKeyToAccount } from "viem/accounts";
+import { useAccount, useSignTypedData } from "wagmi";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -39,7 +32,7 @@ export default function CopilotPage() {
   const [executeResult, setExecuteResult] = useState<string>();
   const [executeError, setExecuteError] = useState<string>();
   const [paymentDetailsDebug, setPaymentDetailsDebug] = useState<string>();
-  const [paymentHeaderDebug, setPaymentHeaderDebug] = useState<string>();
+  const [witnessSignatureDebug, setWitnessSignatureDebug] = useState<string>();
   const [actionType, setActionType] = useState<"transfer" | "register">("transfer");
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("10");
@@ -48,10 +41,7 @@ export default function CopilotPage() {
   const [riskNotes, setRiskNotes] = useState<string>();
   const { user } = useCurrentUser();
   const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
-  const localPk = process.env.NEXT_PUBLIC_Q402_LOCAL_PK;
-  const q402Account =
-    localPk && localPk.startsWith("0x") ? privateKeyToAccount(localPk as `0x${string}`) : null;
+  const { signTypedDataAsync } = useSignTypedData();
   const logAudit = useMutation(api.functions.audit.logAuditEvent);
   const settings = useQuery(
     api.functions.household.fetchSettings,
@@ -156,7 +146,10 @@ export default function CopilotPage() {
     setExecuteStatus("Preparing payment…");
     setExecuteResult(undefined);
     setRiskNotes(undefined);
-    if (!walletClient || !address || !user) {
+    setWitnessSignatureDebug(undefined);
+    setPaymentDetailsDebug(undefined);
+
+    if (!address || !user) {
       setExecuteError("Connect your wallet to execute.");
       setExecuteStatus(undefined);
       return;
@@ -194,39 +187,44 @@ export default function CopilotPage() {
       return;
     }
 
-    const paymentRes = await fetch("/api/actions/payment-details", {
+    const paymentRes = await fetch("/api/actions/execute", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...payload, wallet: address, usdEstimate: estimateUsd }),
     });
 
-    if (!paymentRes.ok) {
-      const data = await paymentRes.json().catch(() => ({}));
-      setExecuteError(data.error ?? "Unable to prepare payment");
+    const paymentJson = await paymentRes.json().catch(() => ({}));
+    setPaymentDetailsDebug(JSON.stringify(paymentJson, null, 2));
+
+    if (paymentRes.status !== 402) {
+      if (!paymentRes.ok) {
+        setExecuteError(paymentJson.error ?? "Execution failed");
+        setExecuteStatus(undefined);
+        return;
+      }
+
+      const txHash = paymentJson.txHash ?? paymentJson.hash ?? "unknown";
+      setExecuteResult(typeof txHash === "string" ? txHash : JSON.stringify(paymentJson));
       setExecuteStatus(undefined);
+      if (user?.prefs?.telemetry !== false) {
+        await logAudit({
+          userId: user._id,
+          type: "onchain_action",
+          payload: { actionType, txHash, riskNotes },
+        });
+      }
       return;
     }
 
-    const paymentJson = (await paymentRes.json()) as {
-      paymentRequired: PaymentRequiredResponse;
-      tx: { to: string; data: string };
+    const witness = (paymentJson as { witness?: unknown }).witness as {
+      domain?: unknown;
+      types?: Record<string, Array<{ name: string; type: string }>>;
+      primaryType?: string;
+      message?: Record<string, unknown>;
     };
 
-    console.debug("[q402] paymentRequired", paymentJson.paymentRequired);
-
-    if (!paymentJson.paymentRequired || !Array.isArray(paymentJson.paymentRequired.accepts)) {
-      setExecuteError("Gateway did not return payment options.");
-      setExecuteStatus(undefined);
-      return;
-    }
-
-    const details = selectPaymentDetails(paymentJson.paymentRequired, {
-      network: network === "mainnet" ? "bsc-mainnet" : "bsc-testnet",
-    });
-    console.debug("[q402] selected payment details", details);
-    setPaymentDetailsDebug(JSON.stringify(details, null, 2));
-    if (!details) {
-      setExecuteError("Gateway did not provide payment details.");
+    if (!witness || !witness.domain || !witness.types || !witness.primaryType || !witness.message) {
+      setExecuteError("Gateway did not provide a witness to sign.");
       setExecuteStatus(undefined);
       return;
     }
@@ -246,32 +244,23 @@ export default function CopilotPage() {
       if (riskData.answer) setRiskNotes(riskData.answer);
     }
 
-    const demoMode = process.env.NEXT_PUBLIC_Q402_DEMO_MODE === "true";
-    let paymentHeader: string | undefined;
+    setExecuteStatus("Signing payment witness…");
+    let signature: `0x${string}`;
     try {
-      if (q402Account) {
-        console.debug("[q402] signing payment header with local viem account");
-        paymentHeader = await createPaymentHeader(q402Account, details);
-      } else {
-        console.debug("[q402] signing payment header with walletClient", walletClient);
-        paymentHeader = await createPaymentHeaderWithWallet(walletClient, details);
-      }
-      console.debug("[q402] signed payment header", paymentHeader);
-      setPaymentHeaderDebug(paymentHeader);
+      signature = await signTypedDataAsync({
+        domain: witness.domain as never,
+        types: witness.types as never,
+        primaryType: witness.primaryType as never,
+        message: witness.message as never,
+      });
+      setWitnessSignatureDebug(signature);
     } catch (err) {
-      console.error("[q402] Failed to sign authorization tuple", err);
-      if (demoMode) {
-        // Fallback for wallets lacking EIP-7702 auth tuple signing; demo header is accepted server-side.
-        paymentHeader = "demo-ok";
-      } else {
-        setExecuteError((err as Error).message || "Failed to sign payment authorization");
-        setExecuteStatus(undefined);
-        return;
-      }
+      setExecuteError((err as Error).message ?? "Failed to sign payment witness");
+      setExecuteStatus(undefined);
+      return;
     }
 
-    setExecuteStatus("Executing on-chain via Q402…");
-
+    setExecuteStatus("Submitting signed payment…");
     const execRes = await fetch("/api/actions/execute", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -279,7 +268,8 @@ export default function CopilotPage() {
         ...payload,
         wallet: address,
         usdEstimate: estimateUsd,
-        xPayment: paymentHeader,
+        witness,
+        signature,
       }),
     });
 
@@ -290,8 +280,8 @@ export default function CopilotPage() {
       return;
     }
 
-    const txHash = execJson.txHash ?? "unknown";
-    setExecuteResult(txHash);
+    const txHash = execJson.txHash ?? execJson.hash ?? "unknown";
+    setExecuteResult(typeof txHash === "string" ? txHash : JSON.stringify(execJson));
     setExecuteStatus(undefined);
     if (user?.prefs?.telemetry !== false) {
       await logAudit({
@@ -309,7 +299,7 @@ export default function CopilotPage() {
         <h1 className="text-3xl font-semibold md:text-4xl">ChainGPT copilot</h1>
         <p className="text-muted-foreground">
           Ask the Web3-aware assistant to explain carts, previews, or simulations. Premium actions can require
-          x402 payments; this surface enforces caps before any on-chain suggestion.
+          402 witness-signing; this surface enforces caps before any on-chain suggestion.
         </p>
       </div>
 
@@ -409,8 +399,8 @@ export default function CopilotPage() {
         <TabsContent value="execute">
           <Card>
             <CardHeader>
-              <CardTitle>Execute (Q402)</CardTitle>
-              <CardDescription>Pay-gated actions with x-payment + policy checks.</CardDescription>
+              <CardTitle>Execute (402)</CardTitle>
+              <CardDescription>Pay-gated actions with EIP-712 witness signing and policy checks.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -478,7 +468,7 @@ export default function CopilotPage() {
               </div>
               <div className="flex items-center gap-3">
                 <Button onClick={executeAction} disabled={!!executeStatus}>
-                  {executeStatus ?? "Execute via Q402"}
+                  {executeStatus ?? "Execute via 402"}
                 </Button>
                 {executeError && <p className="text-sm text-destructive">{executeError}</p>}
               </div>
@@ -489,9 +479,9 @@ export default function CopilotPage() {
                     <p className="text-muted-foreground">{riskNotes}</p>
                   </div>
                 )}
-                {(paymentDetailsDebug || paymentHeaderDebug) && (
+                {(paymentDetailsDebug || witnessSignatureDebug) && (
                   <div className="rounded-lg border bg-muted/40 p-3 text-xs">
-                    <p className="font-semibold">Q402 debug</p>
+                    <p className="font-semibold">402 debug</p>
                     {paymentDetailsDebug && (
                       <>
                         <p className="mt-1 font-medium text-foreground/80">Payment details</p>
@@ -500,11 +490,11 @@ export default function CopilotPage() {
                         </pre>
                       </>
                     )}
-                    {paymentHeaderDebug && (
+                    {witnessSignatureDebug && (
                       <>
-                        <p className="mt-2 font-medium text-foreground/80">X-PAYMENT header</p>
+                        <p className="mt-2 font-medium text-foreground/80">Witness signature</p>
                         <pre className="text-muted-foreground whitespace-pre-wrap break-words rounded-md bg-background/50 p-2 max-h-48 overflow-auto">
-                          {paymentHeaderDebug}
+                          {witnessSignatureDebug}
                         </pre>
                       </>
                     )}
