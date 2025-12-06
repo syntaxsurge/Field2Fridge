@@ -93,7 +93,6 @@ app.post("/api/execute", async (req, res) => {
             name: "F2F-402",
             version: "1",
             chainId: chain.id,
-            verifyingContract: recipientAddress,
           },
           types: {
             Witness: [
