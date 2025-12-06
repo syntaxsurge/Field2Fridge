@@ -41,12 +41,13 @@ export function buildRegisterAgent(params: {
   owner: `0x${string}`;
 }): BuiltTx {
   const registry = CONTRACT_ADDRESSES[params.network].Field2FridgeAgentRegistry as `0x${string}`;
+  const tokenUri = params.agentId; // reuse provided id as tokenURI payload
   return {
     to: registry,
     data: encodeFunctionData({
       abi: registryAbi,
-      functionName: "registerAgent",
-      args: [params.agentId, params.owner],
+      functionName: "register",
+      args: [tokenUri],
     }),
     description: `Register agent ${params.agentId} for ${params.owner}`,
   };
