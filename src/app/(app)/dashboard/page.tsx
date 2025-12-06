@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { CONTRACT_ADDRESSES } from "@/lib/contracts/addresses";
 
 export default function DashboardPage() {
   const { user, isConnected, isLoadingUser, convexConfigured, address } = useCurrentUser();
@@ -75,6 +76,11 @@ export default function DashboardPage() {
       : null;
   const latestVariety = latestSimulation?.variety ?? null;
   const latestRegion = latestSimulation?.region ?? null;
+  const registryAddress = CONTRACT_ADDRESSES.bscTestnet.Field2FridgeAgentRegistry;
+  const serviceTokenAddress = CONTRACT_ADDRESSES.bscTestnet.Field2FridgeServiceToken;
+
+  const shorten = (val: string) => (val.length > 12 ? `${val.slice(0, 6)}…${val.slice(-4)}` : val);
+  const explorerBase = "https://testnet.bscscan.com/address/";
 
   if (!convexConfigured) {
     return (
@@ -143,7 +149,7 @@ export default function DashboardPage() {
         </TabsList>
 
         <TabsContent value="household" className="space-y-6 pt-6">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <Link href="/household/pantry" className="block">
               <Card className="h-full transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-sm">
                 <CardHeader className="space-y-1">
@@ -219,6 +225,37 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </Link>
+            <Card className="h-full">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">On-chain identity</CardTitle>
+                <CardDescription>Registry and service token on BNB testnet.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Agent registry</p>
+                  <Link
+                    href={`${explorerBase}${registryAddress}`}
+                    target="_blank"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    {shorten(registryAddress)}
+                  </Link>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Service token</p>
+                  <Link
+                    href={`${explorerBase}${serviceTokenAddress}`}
+                    target="_blank"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    {shorten(serviceTokenAddress)}
+                  </Link>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Wallet: {address ? shorten(address) : "—"}
+                </p>
+              </CardContent>
+            </Card>
           </div>
           <Link href="/household/cart" className="block">
             <Card className="transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-sm">
