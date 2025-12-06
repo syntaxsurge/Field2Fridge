@@ -121,8 +121,8 @@ function SignInPanelWithConvex() {
           </TabsContent>
           <TabsContent value="farmer" className="space-y-3 pt-4 text-sm">
             <p className="text-muted-foreground">
-              Run SpaceAgri simulations, generate signed attestations, and offer
-              tokenized services on BNB Chain. Your wallet anchors your agent identity.
+              Run NASA-powered agroclimate simulations, generate signed attestations,
+              and offer tokenized services on BNB Chain. Your wallet anchors your agent identity.
             </p>
             <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
               <Zap className="h-4 w-4 text-primary" />

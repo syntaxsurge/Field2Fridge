@@ -21,7 +21,7 @@ const featureCards = [
   {
     title: "Farmer intelligence",
     description:
-      "SpaceAgri trait scoring, yield simulations, and signed attestations for sustainable harvests on BNB.",
+      "NASA POWER agroclimate scoring, yield simulations, and signed attestations for sustainable harvests on BNB.",
     icon: Sprout,
     href: "/dashboard",
   },
@@ -99,7 +99,7 @@ export default function MarketingPage() {
               <div className="space-y-1">
                 <p className="font-medium">Crop simulations</p>
                 <p className="text-muted-foreground">
-                  Pulls SpaceAgri trait scores and yield forecasts for your fields.
+                  Pulls NASA climate signals and yield forecasts for your fields.
                 </p>
               </div>
               <Badge variant="outline">Nightly</Badge>
