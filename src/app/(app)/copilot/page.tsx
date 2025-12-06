@@ -501,10 +501,7 @@ export default function CopilotPage() {
                   </div>
                 )}
                 {executeResult && (
-                  <div className="rounded-lg border bg-muted/40 p-3 text-sm">
-                    <p className="font-semibold">Executed</p>
-                    <p className="text-muted-foreground">Tx hash: {executeResult}</p>
-                  </div>
+                  <ExecutedResult hash={executeResult} network={network} />
                 )}
               </div>
             </CardContent>
@@ -512,5 +509,36 @@ export default function CopilotPage() {
         </TabsContent>
       </Tabs>
     </main>
+  );
+}
+
+function ExecutedResult({ hash, network }: { hash: string; network: "testnet" | "mainnet" }) {
+  const isTxHash = /^0x[a-fA-F0-9]{64}$/.test(hash);
+  const explorerBase =
+    network === "mainnet" ? "https://bscscan.com/tx/" : "https://testnet.bscscan.com/tx/";
+  const explorerUrl = isTxHash ? `${explorerBase}${hash}` : undefined;
+
+  return (
+    <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+      <p className="font-semibold">Executed</p>
+      <div className="mt-1 space-y-2 text-xs">
+        <div>
+          <p className="font-medium text-foreground/80">Tx hash</p>
+          <pre className="text-muted-foreground whitespace-pre-wrap break-all rounded-md bg-background/50 p-2">
+            {hash}
+          </pre>
+        </div>
+        {explorerUrl && (
+          <a
+            className="text-primary hover:underline"
+            href={explorerUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View on BscScan
+          </a>
+        )}
+      </div>
+    </div>
   );
 }
