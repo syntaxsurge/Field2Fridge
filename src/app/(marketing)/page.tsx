@@ -21,7 +21,7 @@ const featureCards = [
   {
     title: "Farmer intelligence",
     description:
-      "SpaceAgri trait scoring, yield simulations, and Midnight-powered privacy proofs for sustainable harvests.",
+      "SpaceAgri trait scoring, yield simulations, and signed attestations for sustainable harvests on BNB.",
     icon: Sprout,
     href: "/dashboard",
   },
@@ -68,7 +68,7 @@ export default function MarketingPage() {
               <p className="font-semibold text-foreground">
                 Privacy-first by design
               </p>
-              <p>Midnight ZK proofs and Unibase memory keep data sovereign.</p>
+              <p>Encrypted attestations and Unibase memory keep data sovereign on BNB.</p>
             </div>
             <div className="rounded-lg border bg-card/60 p-4 shadow-sm">
               <p className="font-semibold text-foreground">Ready for testnets</p>

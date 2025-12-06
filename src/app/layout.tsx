@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Field2Fridge | Autonomous food supply agents",
   description:
-    "Autonomous agents that keep households stocked, farmers optimized, and on-chain actions guarded across BNB, x402, and Midnight proofs.",
+    "Autonomous agents that keep households stocked, farmers optimized, and on-chain actions guarded across BNB and x402 rails.",
 };
 
 export default async function RootLayout({
