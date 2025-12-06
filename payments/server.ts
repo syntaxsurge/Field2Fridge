@@ -42,6 +42,7 @@ const verifyingContract = process.env.Q402_VERIFYING_CONTRACT ?? implementationC
 const recipient = process.env.Q402_RECIPIENT_ADDRESS ?? process.env.NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS;
 const network =
   process.env.Q402_NETWORK === "bsc-mainnet" ? SupportedNetworks.BSC_MAINNET : SupportedNetworks.BSC_TESTNET;
+const demoMode = process.env.Q402_DEMO_MODE === "true";
 
 if (!signerPk) {
   console.warn("Q402_SIGNER_PRIVATE_KEY missing; gateway will still start but cannot settle payments.");
@@ -94,7 +95,17 @@ app.get("/health", (_req, res) => {
 
 app.post("/api/execute", async (req, res) => {
   if (!req.payment || !req.payment.verified) {
+    if (demoMode && req.headers["x-payment"] === "demo-ok") {
+      // Demo bypass for wallets that cannot sign EIP-7702 authorization tuples
+      req.payment = {
+        verified: true,
+        payer: "demo",
+        amount: "0",
+        token: tokenAddress,
+      };
+    } else {
     return res.status(402).json({ error: "Payment verification required" });
+    }
   }
 
   const { tx } = req.body as { tx?: { to?: string; data?: string; value?: string | number | bigint } };

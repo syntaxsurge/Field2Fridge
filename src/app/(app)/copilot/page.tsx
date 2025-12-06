@@ -233,13 +233,19 @@ export default function CopilotPage() {
       if (riskData.answer) setRiskNotes(riskData.answer);
     }
 
-    let paymentHeader: string;
+    const demoMode = process.env.NEXT_PUBLIC_Q402_DEMO_MODE === "true";
+    let paymentHeader: string | undefined;
     try {
       paymentHeader = await createPaymentHeaderWithWallet(walletClient, details);
     } catch (err) {
-      setExecuteError((err as Error).message);
-      setExecuteStatus(undefined);
-      return;
+      if (demoMode) {
+        // Fallback for wallets lacking EIP-7702 auth tuple signing; demo header is accepted server-side.
+        paymentHeader = "demo-ok";
+      } else {
+        setExecuteError((err as Error).message || "Failed to sign payment authorization");
+        setExecuteStatus(undefined);
+        return;
+      }
     }
 
     setExecuteStatus("Executing on-chain via Q402…");
