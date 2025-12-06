@@ -110,30 +110,41 @@ app.post("/api/execute", async (req, res) => {
 
   const { tx } = req.body as { tx?: { to?: string; data?: string; value?: string | number | bigint } };
   if (!tx?.to || !tx?.data) {
+    console.error("[q402-gateway] Missing tx payload", tx);
     return res.status(400).json({ error: "Missing tx payload" });
   }
 
   if (!walletClient) {
+    console.error("[q402-gateway] No walletClient configured; set Q402_SIGNER_PRIVATE_KEY");
     return res.status(500).json({ error: "Gateway signer not configured" });
   }
 
   try {
+    const valueBigInt = tx.value == null ? 0n : BigInt(tx.value as string | number | bigint);
+    console.log("[q402-gateway] Sending tx", { to: tx.to, data: tx.data, value: valueBigInt.toString() });
+
     const hash = await walletClient.sendTransaction({
       to: tx.to as `0x${string}`,
       data: tx.data as `0x${string}`,
-      value: tx.value ? BigInt(tx.value) : 0n,
+      value: valueBigInt,
       account: walletClient.account,
     });
 
+    console.log("[q402-gateway] Sent tx hash", hash);
+
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
-    res.json({
+    return res.json({
       ok: true,
       txHash: hash,
       blockNumber: receipt.blockNumber?.toString(),
       payer: req.payment.payer,
     });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    console.error("[q402-gateway] ERROR sending tx", err);
+    return res.status(500).json({
+      error: "Internal server error in gateway",
+      details: (err as Error).message,
+    });
   }
 });
 
