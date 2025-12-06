@@ -30,6 +30,11 @@ export const createPaymentHeaderWithWallet = assertReady(core.createPaymentHeade
   paymentDetails: Record<string, any>,
 ) => Promise<string>;
 
+export const createPaymentHeader = assertReady(core.createPaymentHeader, "createPaymentHeader") as (
+  account: any,
+  paymentDetails: Record<string, any>,
+) => Promise<string>;
+
 export const selectPaymentDetails = assertReady(core.selectPaymentDetails, "selectPaymentDetails") as (
   response: PaymentRequiredResponse,
   options?: { network?: string; scheme?: string; maxAmount?: bigint },

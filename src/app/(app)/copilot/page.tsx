@@ -15,9 +15,11 @@ import { assertWithinPerOrderCap, enforceMaxSpend } from "@/lib/guards/spend";
 import { useAccount, useWalletClient } from "wagmi";
 import {
   createPaymentHeaderWithWallet,
+  createPaymentHeader,
   selectPaymentDetails,
   type PaymentRequiredResponse,
 } from "@/lib/q402-client";
+import { privateKeyToAccount } from "viem/accounts";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -43,6 +45,9 @@ export default function CopilotPage() {
   const { user } = useCurrentUser();
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
+  const localPk = process.env.NEXT_PUBLIC_Q402_LOCAL_PK;
+  const q402Account =
+    localPk && localPk.startsWith("0x") ? privateKeyToAccount(localPk as `0x${string}`) : null;
   const logAudit = useMutation(api.functions.audit.logAuditEvent);
   const settings = useQuery(
     api.functions.household.fetchSettings,
@@ -239,8 +244,13 @@ export default function CopilotPage() {
     const demoMode = process.env.NEXT_PUBLIC_Q402_DEMO_MODE === "true";
     let paymentHeader: string | undefined;
     try {
-      console.debug("[q402] signing payment header with walletClient", walletClient);
-      paymentHeader = await createPaymentHeaderWithWallet(walletClient, details);
+      if (q402Account) {
+        console.debug("[q402] signing payment header with local viem account");
+        paymentHeader = await createPaymentHeader(q402Account, details);
+      } else {
+        console.debug("[q402] signing payment header with walletClient", walletClient);
+        paymentHeader = await createPaymentHeaderWithWallet(walletClient, details);
+      }
       console.debug("[q402] signed payment header", paymentHeader);
     } catch (err) {
       console.error("[q402] Failed to sign authorization tuple", err);
