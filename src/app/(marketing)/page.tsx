@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ArrowRight, ShieldCheck, ShoppingBag, Sprout } from "lucide-react";
+import { ArrowRight, PlayCircle, ShieldCheck, ShoppingBag, Sprout } from "lucide-react";
 import Link from "next/link";
 
 const featureCards = [
@@ -118,6 +118,67 @@ export default function MarketingPage() {
             </Button>
           </CardContent>
         </Card>
+      </section>
+
+      <section className="overflow-hidden rounded-3xl border bg-gradient-to-br from-background via-primary/5 to-primary/15 shadow-xl">
+        <div className="grid gap-10 p-8 md:grid-cols-[0.9fr_1.1fr] md:p-12 lg:p-14">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              <PlayCircle className="h-4 w-4" />
+              Live demo · BNB testnet
+            </div>
+            <h2 className="text-3xl font-semibold leading-tight md:text-4xl">
+              Watch Field2Fridge in action
+            </h2>
+            <p className="text-base text-muted-foreground md:text-lg">
+              See the end-to-end run: Akedo-style pantry intelligence, SpaceAgri NASA climate sims,
+              ChainGPT copilot research and audits, and a 402 pay-to-execute path on BNB—guarded by
+              spend caps, allowlists, and telemetry.
+            </p>
+            <div className="grid gap-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                <p>Pantry → Safety → Cart approvals with simulated Amazon/Walmart payloads.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                <p>Farmer field planner backed by NASA POWER Agroclimatology daily data.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                <p>ChainGPT copilot for Web3 research, contract audits, and 402-gated execution.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                <p>ASI/Fetch uAgent bridge that consumes cart decisions for long-term reasoning.</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button asChild>
+                <Link href="https://youtu.be/IV46gxrNJew" target="_blank" rel="noreferrer">
+                  Open on YouTube
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/sign-in">Launch app</Link>
+              </Button>
+            </div>
+          </div>
+          <div className="relative">
+            <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/20 via-background to-background blur-3xl" />
+            <div className="overflow-hidden rounded-2xl border shadow-lg shadow-primary/15">
+              <div className="aspect-video bg-black/80">
+                <iframe
+                  title="Field2Fridge demo"
+                  src="https://www.youtube.com/embed/IV46gxrNJew"
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="space-y-6">
