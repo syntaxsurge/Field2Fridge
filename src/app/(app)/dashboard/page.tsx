@@ -75,7 +75,6 @@ export default function DashboardPage() {
   const registryAddress = CONTRACT_ADDRESSES.bscTestnet.Field2FridgeAgentRegistry;
   const serviceTokenAddress = CONTRACT_ADDRESSES.bscTestnet.Field2FridgeServiceToken;
   const workspaceHref = user?.role === "farmer" ? "/farmer/fields" : "/household/pantry";
-  const roleLabel = role === "farmer" ? "farmer" : "household";
 
   const shorten = (val: string) => (val.length > 12 ? `${val.slice(0, 6)}…${val.slice(-4)}` : val);
   const explorerBase = "https://testnet.bscscan.com/address/";

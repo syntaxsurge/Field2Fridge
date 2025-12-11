@@ -14,9 +14,28 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { assertWithinPerOrderCap, enforceMaxSpend } from "@/lib/guards/spend";
+import { type SignTypedDataParameters, type TypedData } from "viem";
 import { useAccount, useSignTypedData } from "wagmi";
 
 type Message = { role: "user" | "assistant"; content: string };
+type SignableWitness = SignTypedDataParameters<TypedData, string>;
+
+function isSignableWitness(value: unknown): value is SignableWitness {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<SignableWitness>;
+  if (!candidate.domain || typeof candidate.domain !== "object") return false;
+  if (!candidate.types || typeof candidate.types !== "object") return false;
+  if (!candidate.primaryType || typeof candidate.primaryType !== "string") return false;
+  if (!candidate.message || typeof candidate.message !== "object") return false;
+
+  return Object.values(candidate.types).every(
+    (entries) =>
+      Array.isArray(entries) &&
+      entries.every(
+        (entry) => entry && typeof entry.name === "string" && typeof entry.type === "string"
+      )
+  );
+}
 
 export default function CopilotPage() {
   const [input, setInput] = useState("");
@@ -216,15 +235,10 @@ export default function CopilotPage() {
       return;
     }
 
-    const witness = (paymentJson as { witness?: unknown }).witness as {
-      domain?: unknown;
-      types?: Record<string, Array<{ name: string; type: string }>>;
-      primaryType?: string;
-      message?: Record<string, unknown>;
-    };
+    const witness = (paymentJson as { witness?: unknown }).witness;
 
-    if (!witness || !witness.domain || !witness.types || !witness.primaryType || !witness.message) {
-      setExecuteError("Gateway did not provide a witness to sign.");
+    if (!isSignableWitness(witness)) {
+      setExecuteError("Gateway did not provide a valid witness to sign.");
       setExecuteStatus(undefined);
       return;
     }
@@ -247,12 +261,7 @@ export default function CopilotPage() {
     setExecuteStatus("Signing payment witness…");
     let signature: `0x${string}`;
     try {
-      signature = await signTypedDataAsync({
-        domain: witness.domain as never,
-        types: witness.types as never,
-        primaryType: witness.primaryType as never,
-        message: witness.message as never,
-      });
+      signature = await signTypedDataAsync(witness);
       setWitnessSignatureDebug(signature);
     } catch (err) {
       setExecuteError((err as Error).message ?? "Failed to sign payment witness");
