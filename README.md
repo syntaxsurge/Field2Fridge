@@ -1,5 +1,7 @@
 # Field2Fridge
 
+[![Field2Fridge Demo](public/images/Field2Fridge-demo.png)](https://youtu.be/IV46gxrNJew)
+
 Field2Fridge is an autonomous Web3 agent network on **BNB Chain** that keeps **household pantries** stocked and gives **farmers** a climate-aware on-chain identity.
 
 - Household side: Akedo-style grocery agent that tracks pantry inventory, enforces budgets and vendor allowlists (Amazon/Walmart simulated), and auto-approves carts with audit logs.  
