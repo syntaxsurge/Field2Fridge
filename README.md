@@ -1,14 +1,19 @@
 # Field2Fridge
 
-[![Field2Fridge Demo](public/images/Field2Fridge-demo.png)](https://youtu.be/IV46gxrNJew)
-
 Field2Fridge is an autonomous Web3 agent network on **BNB Chain** that keeps **household pantries** stocked and gives **farmers** a climate-aware on-chain identity.
+
+[![Field2Fridge Demo](public/images/Field2Fridge-demo.png)](https://youtu.be/IV46gxrNJew)
 
 - Household side: Akedo-style grocery agent that tracks pantry inventory, enforces budgets and vendor allowlists (Amazon/Walmart simulated), and auto-approves carts with audit logs.  
 - Farmer side: SpaceAgri-aligned field simulations using **NASA POWER Agroclimatology** daily data to derive climate risk scores per field.  
 - Copilot: **ChainGPT** research + smart-contract audit + 402-style pay-per-execute flow with spend caps and contract allowlists.  
 - Agentverse: **ASI/Fetch** uAgent (Field2FridgeASI) powered by **ASI-1 Mini** so the same logic lives in Agentverse as well as the Next.js app.  
 - Payments: Custom **HTTP 402** gateway with an EIP-712 witness → signature → execution flow for BNB testnet transactions.
+
+**Demo + Live App**
+
+- YouTube: https://youtu.be/IV46gxrNJew  
+- Live app: https://field2-fridge.vercel.app/
 
 ---
 
