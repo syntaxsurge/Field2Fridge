@@ -1,60 +1,141 @@
 # Field2Fridge
 
-Field2Fridge is a Next.js 15 App Router project that keeps household pantries stocked and gives farmers an on-chain agent that can prove yield outlooks. The farmer side now grounds simulations in **NASA POWER agroclimate data** (no API key required) while the rest of the stack runs on BNB testnet with Convex-backed state and ChainGPT for research.
+Field2Fridge is an autonomous Web3 agent network on **BNB Chain** that keeps **household pantries** stocked and gives **farmers** a climate-aware on-chain identity.
+
+- Household side: Akedo-style grocery agent that tracks pantry inventory, enforces budgets and vendor allowlists (Amazon/Walmart simulated), and auto-approves carts with audit logs.  
+- Farmer side: SpaceAgri-aligned field simulations using **NASA POWER Agroclimatology** daily data to derive climate risk scores per field.  
+- Copilot: **ChainGPT** research + smart-contract audit + 402-style pay-per-execute flow with spend caps and contract allowlists.  
+- Agentverse: **ASI/Fetch** uAgent (Field2FridgeASI) powered by **ASI-1 Mini** so the same logic lives in Agentverse as well as the Next.js app.  
+- Payments: Custom **HTTP 402** gateway with an EIP-712 witness → signature → execution flow for BNB testnet transactions.
+
+---
+
+## Hackathons & Tracks
+
+Built for the **UK AI Agent Hackathon EP3 by ASI** with alignment to sponsor tracks:
+
+### Akedo – AI Robot Shopping Assistant
+- Household workspace at `/household/pantry`, `/household/cart`, `/household/controls`.
+- Tracks items with avg daily use → computes days-left risk (Comfortable/Watch/Critical).
+- Enforces weekly budgets, per-order caps, and vendor allowlists (Amazon/Walmart simulated).
+- Auto-cart proposes refills under caps; approvals logged in Convex with cart payloads.
+
+### Quack × ChainGPT – Super Web3 Agent
+- `/copilot` page is a ChainGPT Web3 assistant:
+  - Research tab hits ChainGPT’s Web3 LLM for explanations/risk notes.
+  - Audit tab calls the Smart Contract Auditor for registry/token reviews.
+  - Execute tab uses a **402 flow**: first call returns `HTTP 402` + EIP-712 witness; client signs via wagmi and resubmits `{ tx, witness, signature }`; gateway enforces caps/allowlists then simulates or sends the tx.
+- Safety: global USD caps, contract allow/deny lists, and ChainGPT risk summaries before execution.
+
+### SpaceAgri – AI Agriculture Agent with Open Agro Data
+- `/farmer/fields` calls **NASA POWER Daily API (community=AG)** to fetch temperature/rainfall and compute climate risk per field.
+- Stores simulation outputs per wallet/field in Convex and surfaces history and outlooks.
+
+### BNB Chain Prize
+- On-chain actions run on **BNB Smart Chain Testnet**:
+  - `Field2FridgeAgentRegistry` (ERC-8004 style) mints an NFT per agent via `register`.
+  - `Field2FridgeServiceToken` (ERC-20) as the service/payment token.
+- Wallet layer: RainbowKit + wagmi + viem with addresses injected via env.
+
+### ASI / Fetch / Agentverse
+- `agents/field2fridge_agent/agent.py` defines **Field2FridgeASI** (uAgents) using **ASI-1 Mini** through ASI:One.
+- Publishes Chat Protocol and registers with Almanac; listens for `/cart_decision` posts from the app so household approvals are visible to the agent.
+
+---
 
 ## Stack
 
-- Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui
-- Convex for wallet-scoped data (pantry, carts, controls, simulations, audit logs)
-- RainbowKit + wagmi for BNB testnet wallets
-- NASA POWER daily agroclimatology API for climate signals
-- ChainGPT API for the `/copilot` assistant
-- 402 payment gateway (Express) for sign-to-pay protected on-chain actions
+- **Frontend**: Next.js 15 (App Router), TypeScript, Tailwind CSS, shadcn/ui.
+- **Wallets**: RainbowKit + wagmi + viem (BNB testnet/mainnet).
+- **Backend state**: Convex (profiles, pantry, controls, carts, audit logs, farmer sims).
+- **Agents / AI**: ChainGPT Web3 LLM + Auditor; ASI-1 Mini via ASI:One for the uAgent.
+- **On-chain**: BNB testnet contracts (agent registry + service token).
+- **Payments**: Express 402 gateway with EIP-712 witness signing.
 
-## Quick start
+---
+
+## App Surfaces
+
+- **Household**
+  - `/household/pantry` — inventory + days-left risk.
+  - `/household/controls` — budgets, per-order cap, vendor allow/deny, approval mode.
+  - `/household/cart` — auto-cart, approve/decline with audit logging.
+- **Farmer**
+  - `/farmer/fields` — field planner using NASA POWER climate signals; stores results/history.
+- **Copilot**
+  - `/copilot` — ChainGPT research, smart-contract audit, and 402-gated execution with tx previews and risk warnings.
+- **Settings**
+  - `/settings` — network toggle, global USD caps, contract allow/deny lists, telemetry/warnings.
+
+---
+
+## Quick Start
 
 ```bash
 pnpm install
-pnpm dev          # Next.js
-pnpm convex:dev   # Convex (requires Convex CLI login)
-pnpm payments:dev # optional: 402 gateway
+
+# Convex dev (Terminal 1)
+pnpm run convex:dev
+
+# Next.js dev (Terminal 2)
+pnpm dev
+
+# ASI uAgent (Terminal 3, optional but recommended)
+cd agents/field2fridge_agent
+python -m venv .venv   # once
+source .venv/bin/activate
+pip install -r requirements.txt
+python agent.py
+
+# 402 gateway (Terminal 4, for Execute demo)
+pnpm run payments:dev
 ```
 
-### Required environment
+Open `http://localhost:3000`.
 
-Set these in `.env.local` (or `.env` for local dev):
+---
 
+## Required Environment
+
+Set these in `.env.local` for Next.js (and `.env` for the Python agent):
+
+**Next.js / Convex / BNB**
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
 - `NEXT_PUBLIC_CONVEX_URL`
-- `CHAINGPT_API_KEY` and `CHAINGPT_BASE_URL`
-- `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS`, `NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS` (BNB testnet)
-- `Q402_GATEWAY_URL`, `Q402_TOKEN_ADDRESS`, `Q402_RECIPIENT_ADDRESS`, `Q402_RPC_URL`, and optional `Q402_SIGNER_PRIVATE_KEY` for the 402 gateway
-- `MEMBASE_*` if using Unibase memory
+- `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS`
+- `NEXT_PUBLIC_SERVICE_TOKEN_ADDRESS`
+- `CHAINGPT_API_KEY`
+- (optional) `Q402_GATEWAY_URL` (default `http://localhost:4020`)
 
-NASA POWER requires **no** keys or additional env. Clean the SpaceAgri placeholders from existing envs; they are unused.
+**Payments gateway (402 flow)**
+- `Q402_PORT` (default `4020`)
+- `Q402_RPC_URL` (e.g., `https://bsc-testnet.publicnode.com`)
+- `Q402_NETWORK` (`BSC_TESTNET` or `BSC_MAINNET`)
+- `Q402_SIGNER_PRIVATE_KEY` (omit to simulate txs)
+- `Q402_TOKEN_ADDRESS` (service token)
+- `Q402_RECIPIENT_ADDRESS` (payment recipient)
 
-## Farmer simulations (NASA POWER)
+**ASI / Fetch uAgent** (`agents/field2fridge_agent/.env`)
+- `ASI1_API_KEY`
+- `FIELD2FRIDGE_SUBJECT`
+- `AGENT_SEED_PHRASE`
 
-- Route: `POST /api/climate/simulate`
-- Input: `crop`, `region`, `fieldSizeHa`, optional `latitude`/`longitude` (defaults to the US ag belt for demos)
-- Behavior: fetches the last 90 days of daily climate data from NASA POWER (AG community), computes mean temperature, total rainfall, drought days, and solar irradiance, derives a risk score, and ranks varieties with yield deltas.
-- Storage: top recommendation plus climate metrics are persisted per wallet in Convex for dashboard/history views.
+NASA POWER needs **no API key**.
 
-## Household + copilot surfaces
+---
 
-- Household: `/household/pantry`, `/household/cart`, `/household/controls` with guardrails (weekly budget, allow/deny lists, approval modes) and audit logs.
-- Copilot: `/copilot` proxies ChainGPT for research and audits; Execute tab runs 402-gated transfers/agent registry calls with spend caps, allow/deny lists, previews, and risk warnings.
+## 402 Gateway (x402-style)
 
-## 402 gateway
+`payments/server.ts` implements a two-phase HTTP 402 flow:
+1) Client posts `tx` without witness/signature → responds `402 Payment Required` with `paymentDetails` (token, amount, networkId, EIP-712 witness).  
+2) Client signs the witness via wagmi `signTypedData` and resubmits `{ tx, witness, signature }` → gateway verifies signature, enforces caps/allowlists, and simulates or sends the BNB testnet transaction.
 
-- Express app at `payments/server.ts` returning HTTP 402 with EIP-712 witness details; second call verifies the signature and submits the transaction (or simulates if no signer is configured).
-- Configure `Q402_GATEWAY_URL`, `Q402_NETWORK`, `Q402_TOKEN_ADDRESS`, `Q402_RECIPIENT_ADDRESS`, `Q402_RPC_URL`, and optional `Q402_SIGNER_PRIVATE_KEY` in env.
-- Next routes `/api/actions/execute` proxy through the gateway; the copilot signs the witness client-side with wagmi before resubmitting.
+---
 
-## Testing and readiness
+## Testing
 
-- `pnpm typecheck` — TypeScript no-emit
-- `pnpm lint` — ESLint
-- `pnpm build` — production build
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm build`
 
-Run typecheck/build before shipping to keep the Convex schema and Next.js routes healthy.
+Run these before demos to ensure Convex schema, routes, and types are clean.
